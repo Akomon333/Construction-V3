@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EhitusTurg | Kataloog</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="lang-bar">
+    <button onclick="setLang('et')">EST</button>
+    <button onclick="setLang('ru')">РУС</button>
+</div>
+
+<header class="compact-hero">
+    <div class="container">
+        <h1 class="logo">EHITUS<span>TURG</span></h1>
+    </div>
+</header>
+
+<nav class="filter-sticky">
+    <div class="container">
+        <div class="search-container" style="margin-bottom: 15px;">
+            <input type="text" id="searchInput" 
+                   data-et="Otsi firma nime järgi..." 
+                   data-ru="Поиск по названию..." 
+                   placeholder="Otsi firma nime järgi..."
+                   oninput="handleSearch(this.value)"
+                   style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 1rem;">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            <div class="scroll-x">
+                <button class="filter-btn active" onclick="filterCat('all', this)" data-et="Kõik" data-ru="Все">Kõik</button>
+                <button class="filter-btn" onclick="filterCat('wood', this)" data-et="Puit" data-ru="Дерево">Puit</button>
+                <button class="filter-btn" onclick="filterCat('stone', this)" data-et="Kivid" data-ru="Камень">Kivid</button>
+                <button class="filter-btn" onclick="filterCat('tools', this)" data-et="Tööriistad" data-ru="Инструменты">Tööriistad</button>
+            </div>
+            <button class="add-firm-btn" onclick="openPostFirmModal()" data-et="+ Postita" data-ru="+ Разместить">+ Postita</button>
+        </div>
+    </div>
+</nav>
+
+<main class="container listing-area">
+    <div id="main-grid"></div>
+    
+    <div id="loader-sentinel" style="text-align:center; padding: 20px; color: #666; font-size: 0.9rem; min-height: 50px;"></div>
+</main>
+
+<div id="postFirmModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-et="Minu Profiil" data-ru="Мой профиль">Minu Profiil</h2>
+            <button class="close-btn" onclick="closePostFirmModal()">×</button>
+        </div>
+
+        <div id="authStep" class="modal-step">
+            <p data-et="Logi sisse või registreeru" data-ru="Войти или зарегистрироваться">Logi sisse või registreeru:</p>
+            <div class="form-group">
+                <label for="userEmail">Email</label>
+                <input type="email" id="userEmail" placeholder="your@email.com" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="userPassword" data-et="Salasõna (min 6 tähte)" data-ru="Пароль (мин. 6 символов)">Salasõna (min 6 tähte)</label>
+                <input type="password" id="userPassword" placeholder="******" class="form-input" required>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="loginUser()" class="submit-btn" style="flex: 1;" data-et="Logi sisse" data-ru="Войти">Logi sisse</button>
+                <button onclick="registerUser()" class="submit-btn" style="flex: 1; background: #34495e;" data-et="Registreeru" data-ru="Регистрация">Registreeru</button>
+            </div>
+        </div>
+
+        <div id="userFirmsStep" class="modal-step hidden">
+            <div id="userFirmsList" class="user-firms-list"></div>
+        </div>
+
+        <div id="firmStep" class="modal-step hidden">
+            <form id="firmForm">
+                <div class="form-group">
+                    <label for="firmName" data-et="Firma nimi" data-ru="Название компании">Firma nimi</label>
+                    <input type="text" id="firmName" required class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="firmCategory" data-et="Kategooria" data-ru="Категория">Kategooria</label>
+                    <select id="firmCategory" required class="form-input">
+                        <option value="">-- Valige --</option>
+                        <option value="wood" data-et="Puit" data-ru="Дерево">Puit</option>
+                        <option value="stone" data-et="Kivid" data-ru="Камень">Kivid</option>
+                        <option value="tools" data-et="Tööriistad" data-ru="Инструменты">Tööriistad</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="firmCity" data-et="Linn" data-ru="Город">Linn</label>
+                    <input type="text" id="firmCity" required class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="firmPhone" data-et="Telefon" data-ru="Телефон">Telefon</label>
+                    <input type="tel" id="firmPhone" placeholder="555 0000" required class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="firmWebsite" data-et="Veebisait" data-ru="Веб-сайт">Veebisait</label>
+                    <input type="url" id="firmWebsite" placeholder="https://..." class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="firmExperience" data-et="Kogemuse aastad" data-ru="Лет опыта">Kogemuse aastad</label>
+                    <input type="number" id="firmExperience" min="0" required class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label data-et="Firma logo" data-ru="Логотип">Firma logo</label>
+                    <div class="logo-upload">
+                        <input type="file" id="logoFile" accept="image/*" class="file-input">
+                        <label for="logoFile" class="file-label">
+                            <span data-et="Vali logo" data-ru="Выбрать лого">Vali logo</span>
+                        </label>
+                        <div id="logoPreview" class="logo-preview hidden">
+                            <img id="logoPreviewImg" src="" alt="Preview">
+                            <button type="button" class="remove-logo-btn" onclick="removeLogo()">×</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" onclick="submitFirm()" class="submit-btn" data-et="Salvesta" data-ru="Сохранить">Salvesta</button>
+                <button type="button" onclick="showUserFirmsStep()" class="back-btn" data-et="Tühista" data-ru="Отмена" style="background:#95a5a6; margin-top:8px;">Tühista</button>
+            </form>
+        </div>
+
+        <div id="successStep" class="modal-step hidden">
+            <div class="success-message" style="text-align: center; padding: 20px;">
+                <h3 data-et="Tehtud!" data-ru="Готово!">Tehtud!</h3>
+                <p data-et="Andmed on salvestatud." data-ru="Данные сохранены.">Andmed on salvestatud.</p>
+                <button onclick="closePostFirmModal()" class="submit-btn" data-et="Sulge" data-ru="Закрыть">Sulge</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay" onclick="closePostFirmModal()"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script src="script.js"></script>
+</body>
+</html>
