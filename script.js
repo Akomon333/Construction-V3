@@ -1,3 +1,9 @@
+const CLOUDINARY_CLOUD_NAME = "dagx8psvi";
+const CLOUDINARY_PRESET = "ehitusturg_logos"; 
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+const USE_CLOUDINARY = CLOUDINARY_CLOUD_NAME && CLOUDINARY_PRESET;
+
+
 const firebaseConfig = {
   apiKey: "AIzaSyBWbVRiYKugqy8axQ_MOW0P8fM8z4iE7XY",
   authDomain: "ehitusturg-64173.firebaseapp.com",
@@ -8,47 +14,54 @@ const firebaseConfig = {
   appId: "1:466211818119:web:fa65719a98bcc5dacbc622"
 };
 
-const CLOUDINARY_CLOUD_NAME = "dagx8psvi";
-const CLOUDINARY_UPLOAD_PRESET = "ehitusturg_logo"; 
-const USE_CLOUDINARY = CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET; 
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
+
+const PAGE_SIZE = 15;
 
 let currentUser = null;
 let currentLanguage = localStorage.getItem('selectedLanguage') || 'et';
 let selectedLogoFile = null;
 let currentExistingLogoUrl = null;
 let editingFirmId = null;
-
-// Scale-Optimization State
 let lastLoadedKey = null;
 let isLoading = false;
 let hasMore = true;
 let currentCategory = 'all';
 let currentSearch = '';
 let searchTimer = null;
-const PAGE_SIZE = 15;
+let userFirmsListener = null;
 
 const i18n = {
-    et: { 
-        profile: "Minu profiil", postFirm: "+ Postita", addNew: "+ Lisa uus firma", logout: "Logi välja", 
-        edit: "Muuda", delete: "Kustuta", confirm: "Kas oled kindel?", years: "a. kogemust", 
-        loading: "Laeb...", empty: "Tulemusi ei leitud", web: "WEB", call: "Helista:" 
+    et: {
+        profile: "Minu profiil", postFirm: "+ Postita", addNew: "+ Lisa uus firma", logout: "Logi välja",
+        edit: "Muuda", delete: "Kustuta", confirm: "Kas oled kindel?", years: "a. kogemust",
+        loading: "Laeb...", empty: "Tulemusi ei leitud", web: "WEB", call: "Helista:", errorLogin: "Vale e-mail või parool"
     },
-    ru: { 
-        profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти", 
-        edit: "Изм.", delete: "Удалить", confirm: "Вы уверены?", years: "л. опыта", 
-        loading: "Загрузка...", empty: "Ничего не найдено", web: "САЙТ", call: "Звоните:" 
+    ru: {
+        profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти",
+        edit: "Изм.", delete: "Удалить", confirm: "Вы уверены?", years: "л. опыта",
+        loading: "Загрузка...", empty: "Ничего не найдено", web: "САЙТ", call: "Звоните:", errorLogin: "Неверный email или пароль"
     }
 };
 
-// ============ 3. HIGH-TRAFFIC DATA FETCHING ============
+async function uploadToCloudinary(file) {
+    if (!USE_CLOUDINARY) throw new Error("Cloudinary not configured");
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+    if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'Upload failed');
+    }
+    const data = await resp.json();
+    return data.secure_url;
+}
 
 async function fetchFirms(reset = false) {
     if (isLoading || (!hasMore && !reset)) return;
-    
     isLoading = true;
     const grid = document.getElementById('main-grid');
     const loader = document.getElementById('loader-sentinel');
@@ -58,92 +71,84 @@ async function fetchFirms(reset = false) {
         lastLoadedKey = null;
         hasMore = true;
     }
-
     if (loader) loader.textContent = i18n[currentLanguage].loading;
 
     try {
         let query = db.ref('allFirms');
-
-        // Priority Logic: Search > Category > Default
         if (currentSearch) {
-            query = query.orderByChild('name').startAt(currentSearch).endAt(currentSearch + '\uf8ff');
+            const searchVal = currentSearch.charAt(0).toUpperCase() + currentSearch.slice(1).toLowerCase();
+            query = query.orderByChild('name').startAt(searchVal).endAt(searchVal + '\uf8ff');
         } else if (currentCategory !== 'all') {
             query = query.orderByChild('category').equalTo(currentCategory);
         } else {
             query = query.orderByKey();
+            if (lastLoadedKey) query = query.endAt(lastLoadedKey);
         }
 
-        // Apply Pagination Key
-        if (lastLoadedKey) query = query.endAt(lastLoadedKey);
-
-        // Fetch PAGE_SIZE + 1 to check for next page availability
         const snapshot = await query.limitToLast(PAGE_SIZE + 1).once('value');
         const data = snapshot.val() || {};
-        
-        // Convert to array and Sort Newest First (Descending)
         let items = Object.entries(data).map(([key, val]) => ({ key, ...val }));
         items.sort((a, b) => b.key.localeCompare(a.key));
 
-        // Remove the duplicate "pivot" key
         if (lastLoadedKey && items.length > 0 && items[0].key === lastLoadedKey) {
             items.shift();
         }
 
         if (items.length <= PAGE_SIZE) hasMore = false;
-        
+        else items = items.slice(0, PAGE_SIZE);
+
         if (items.length > 0) {
             lastLoadedKey = items[items.length - 1].key;
             renderItems(items);
         } else if (reset) {
-            grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:40px; opacity:0.6;">${i18n[currentLanguage].empty}</p>`;
+            grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">${i18n[currentLanguage].empty}</p>`;
         }
     } catch (err) {
         console.error("Fetch Error:", err);
     } finally {
         isLoading = false;
-        if (loader && !hasMore) loader.textContent = "";
+        if (loader) loader.textContent = '';
     }
 }
 
 function renderItems(items) {
     const grid = document.getElementById('main-grid');
-    const fragment = document.createDocumentFragment(); // Memory optimization
-
+    const fragment = document.createDocumentFragment();
     items.forEach(firm => {
         const row = document.createElement('div');
         row.className = 'firm-row';
-        
-        // Cloudinary Bandwidth Saver: Force 200px width, Auto Format, Auto Quality
-        const thumbUrl = firm.logo 
-            ? firm.logo.replace('/upload/', '/upload/w_200,c_scale,f_auto,q_auto/') 
+        const thumbUrl = firm.logo
+            ? firm.logo.replace('/upload/', '/upload/w_200,c_scale,f_auto,q_auto/')
             : 'https://via.placeholder.com/150x100?text=No+Logo';
 
         row.innerHTML = `
             <div class="firm-image"><img src="${thumbUrl}" loading="lazy" alt="logo"></div>
             <div class="firm-main">
-                <h2 class="name">${escapeHtml(firm.name)}</h2>
+                <h2 class="name">${escapeHtml(firm.name || '')}</h2>
                 <div class="meta-data">
-                    <span>${escapeHtml(firm.city)}</span> • <span>${firm.experience} ${i18n[currentLanguage].years}</span>
+                    <span>${escapeHtml(firm.city || '')}</span> • <span>${firm.experience || 0} ${i18n[currentLanguage].years}</span>
                 </div>
             </div>
             <div class="firm-actions">
-                <a href="tel:${firm.phone.replace(/\s/g, '')}" class="tel-link" style="white-space:nowrap;">
-                    ${escapeHtml(firm.phone)}
-                </a>
+                <a href="tel:${(firm.phone || '').replace(/\s/g, '')}" class="tel-link">${escapeHtml(firm.phone || '')}</a>
                 ${firm.website ? `<a href="${escapeHtml(firm.website)}" target="_blank" class="visit-btn">${i18n[currentLanguage].web}</a>` : ''}
-            </div>
-        `;
+            </div>`;
         fragment.appendChild(row);
     });
     grid.appendChild(fragment);
 }
 
-// ============ 4. USER AUTH & FIRM MANAGEMENT ============
-
 auth.onAuthStateChanged(user => {
     currentUser = user;
     updateAuthUI();
-    if (user) loadUserFirms();
+    if (user) {
+        loadUserFirms();
+    } else {
+        if (userFirmsListener) {
+            db.ref(`firms/${userFirmsListener}`).off('value');
+            userFirmsListener = null;
+        }
+    }
 });
 
 function updateAuthUI() {
@@ -154,74 +159,126 @@ function updateAuthUI() {
 async function submitFirm() {
     if (!currentUser) return;
     const name = document.getElementById('firmName').value.trim();
-    let phone = document.getElementById('firmPhone').value.trim();
-    
-    if (!name || !phone) return alert("Palun täida väljad!");
-    if (!phone.startsWith('+')) phone = "+372 " + phone;
+    const phone = document.getElementById('firmPhone').value.trim();
+    if (!name || !phone) return alert("Täida väljad!");
+
+    const submitBtn = document.querySelector('#firmStep .submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-        let logoUrl = currentExistingLogoUrl;
+        let logoUrl = currentExistingLogoUrl || null;
         if (selectedLogoFile) {
-            const formData = new FormData();
-            formData.append('file', selectedLogoFile);
-            formData.append('upload_preset', CLOUDINARY_PRESET);
-            const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-            const cloudData = await resp.json();
-            logoUrl = cloudData.secure_url;
+            if (!USE_CLOUDINARY) {
+                alert("Logo upload not configured. Please set CLOUDINARY_CLOUD_NAME and CLOUDINARY_PRESET.");
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+            logoUrl = await uploadToCloudinary(selectedLogoFile);
         }
 
         const firmId = editingFirmId || db.ref().child('allFirms').push().key;
         const firmData = {
-            id: firmId, uid: currentUser.uid, name,
+            id: firmId,
+            uid: currentUser.uid,
+            name,
             category: document.getElementById('firmCategory').value,
             city: document.getElementById('firmCity').value.trim(),
-            phone, website: document.getElementById('firmWebsite').value.trim(),
-            experience: document.getElementById('firmExperience').value,
-            logo: logoUrl, timestamp: firebase.database.ServerValue.TIMESTAMP
+            phone,
+            website: document.getElementById('firmWebsite').value.trim(),
+            experience: parseInt(document.getElementById('firmExperience').value) || 0,
+            logo: logoUrl,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
         };
 
         const updates = {};
         updates[`/firms/${currentUser.uid}/${firmId}`] = firmData;
         updates[`/allFirms/${firmId}`] = firmData;
-
         await db.ref().update(updates);
         showSuccessStep();
         fetchFirms(true);
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+        alert(e.message);
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 function loadUserFirms() {
+    if (!currentUser) return;
+    if (userFirmsListener) {
+        db.ref(`firms/${userFirmsListener}`).off('value');
+    }
+    userFirmsListener = currentUser.uid;
+
     db.ref(`firms/${currentUser.uid}`).on('value', snap => {
         const container = document.getElementById('userFirmsList');
         if (!container) return;
         const data = snap.val() || {};
-        const lang = i18n[currentLanguage];
-        
-        // Profile view styled with website palette (#2c3e50)
+
         container.innerHTML = `
-            <button onclick="resetForm(); showFirmStep()" class="submit-btn" style="background:#2c3e50; color:white; margin-bottom:12px; width:100%; font-weight:600;">
-                ${lang.addNew}
-            </button>
-            <button onclick="logout()" style="background:transparent; color:#7f8c8d; margin-bottom:20px; width:100%; border:1px solid #bdc3c7; border-radius:8px; padding:8px;">
-                ${lang.logout}
-            </button>
-        `;
+            <button onclick="resetForm(); showFirmStep()" class="submit-btn">${i18n[currentLanguage].addNew}</button>
+            <button onclick="logout()" class="back-btn">${i18n[currentLanguage].logout}</button>`;
 
         Object.keys(data).forEach(id => {
             const d = document.createElement('div');
-            d.style = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; background:white; margin-bottom:5px; border-radius:4px;";
+            d.className = "user-firm-item";
             d.innerHTML = `
-                <span style="font-weight:500; color:#2c3e50;">${escapeHtml(data[id].name)}</span>
+                <span>${escapeHtml(data[id].name || '')}</span>
                 <div>
-                    <button onclick="openEdit('${id}')" style="background:none; border:none; color:#2980b9; font-weight:600; cursor:pointer;">${lang.edit}</button>
-                    <button onclick="deleteFirm('${id}')" style="background:none; border:none; color:#c0392b; margin-left:12px; font-weight:600; cursor:pointer;">${lang.delete}</button>
+                    <button onclick="openEdit('${id}')" style="color:var(--primary);border:none;background:none;cursor:pointer;">${i18n[currentLanguage].edit}</button>
+                    <button onclick="deleteFirm('${id}')" style="color:var(--error);border:none;background:none;cursor:pointer;margin-left:10px;">${i18n[currentLanguage].delete}</button>
                 </div>`;
             container.appendChild(d);
         });
     });
 }
 
-// ============ 5. UI HELPERS ============
+async function openEdit(firmId) {
+    if (!currentUser) return;
+    try {
+        const snap = await db.ref(`firms/${currentUser.uid}/${firmId}`).once('value');
+        const d = snap.val();
+        if (!d) return;
+
+        editingFirmId = firmId;
+        currentExistingLogoUrl = d.logo || null;
+        selectedLogoFile = null;
+
+        document.getElementById('firmName').value = d.name || '';
+        document.getElementById('firmPhone').value = d.phone || '';
+        document.getElementById('firmCity').value = d.city || '';
+        document.getElementById('firmWebsite').value = d.website || '';
+        document.getElementById('firmExperience').value = d.experience || '';
+        document.getElementById('firmCategory').value = d.category || '';
+
+        const preview = document.getElementById('logoPreview');
+        const previewImg = document.getElementById('logoPreviewImg');
+        if (d.logo && preview && previewImg) {
+            previewImg.src = d.logo;
+            preview.classList.remove('hidden');
+        } else if (preview) {
+            preview.classList.add('hidden');
+        }
+
+        showFirmStep();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function deleteFirm(firmId) {
+    if (!currentUser) return;
+    if (!confirm(i18n[currentLanguage].confirm)) return;
+    try {
+        const updates = {};
+        updates[`/firms/${currentUser.uid}/${firmId}`] = null;
+        updates[`/allFirms/${firmId}`] = null;
+        await db.ref().update(updates);
+        fetchFirms(true);
+    } catch (e) {
+        alert(e.message);
+    }
+}
 
 function handleSearch(val) {
     clearTimeout(searchTimer);
@@ -232,17 +289,12 @@ function handleSearch(val) {
 }
 
 function filterCat(cat, btn) {
-    if (currentCategory === cat && !currentSearch) return;
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentCategory = cat;
     currentSearch = '';
-    const sInput = document.getElementById('searchInput');
-    if (sInput) sInput.value = '';
     fetchFirms(true);
 }
-
-function backToAuth() { /* Intentionally empty as requested */ }
 
 function setLang(lang) {
     currentLanguage = lang;
@@ -259,7 +311,6 @@ function escapeHtml(t) {
     return d.innerHTML;
 }
 
-// Modal Toggle Logic
 function openPostFirmModal() {
     document.getElementById('postFirmModal').classList.add('active');
     document.getElementById('modalOverlay').classList.add('active');
@@ -274,7 +325,8 @@ function closePostFirmModal() {
 
 function hideAllSteps() {
     ['authStep', 'firmStep', 'userFirmsStep', 'successStep'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     });
 }
 
@@ -283,49 +335,71 @@ function showFirmStep() { hideAllSteps(); document.getElementById('firmStep').cl
 function showUserFirmsStep() { hideAllSteps(); document.getElementById('userFirmsStep').classList.remove('hidden'); }
 function showSuccessStep() { hideAllSteps(); document.getElementById('successStep').classList.remove('hidden'); }
 
-// ============ 6. EVENT LISTENERS ============
+function resetForm() {
+    editingFirmId = null;
+    selectedLogoFile = null;
+    currentExistingLogoUrl = null;
+    const form = document.getElementById('firmForm');
+    if (form) form.reset();
+    const preview = document.getElementById('logoPreview');
+    if (preview) preview.classList.add('hidden');
+}
+
+function loginUser() {
+    const email = document.getElementById('userEmail').value.trim();
+    const pass = document.getElementById('userPassword').value;
+    if (!email || !pass) return alert("Sisesta e-mail ja parool");
+    auth.signInWithEmailAndPassword(email, pass)
+        .then(() => showUserFirmsStep())
+        .catch(() => alert(i18n[currentLanguage].errorLogin));
+}
+
+function registerUser() {
+    const email = document.getElementById('userEmail').value.trim();
+    const pass = document.getElementById('userPassword').value;
+    if (!email) return alert("Sisesta e-mail");
+    if (pass.length < 6) return alert("Min 6 märki");
+    auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => showUserFirmsStep())
+        .catch(e => alert(e.message));
+}
+
+function logout() {
+    if (userFirmsListener) {
+        db.ref(`firms/${userFirmsListener}`).off('value');
+        userFirmsListener = null;
+    }
+    auth.signOut().then(() => {
+        currentUser = null;
+        updateAuthUI();
+        closePostFirmModal();
+    });
+}
 
 window.addEventListener('load', () => {
     setLang(currentLanguage);
     fetchFirms(true);
 
-    // Infinite Scroll Sentinel
     const observer = new IntersectionObserver(entries => {
         if (entries[0].isIntersecting && !isLoading && hasMore) fetchFirms();
     }, { rootMargin: '400px' });
-    
+
     const sentinel = document.getElementById('loader-sentinel');
     if (sentinel) observer.observe(sentinel);
 
-    // Logo Preview Logic
-    document.getElementById('logoFile').addEventListener('change', e => {
-        if (e.target.files[0]) {
-            selectedLogoFile = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = ev => {
-                document.getElementById('logoPreviewImg').src = ev.target.result;
-                document.getElementById('logoPreview').classList.remove('hidden');
-            };
-            reader.readAsDataURL(selectedLogoFile);
-        }
-    });
+    const logoInput = document.getElementById('logoFile');
+    if (logoInput) {
+        logoInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedLogoFile = file;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    document.getElementById('logoPreviewImg').src = ev.target.result;
+                    document.getElementById('logoPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 });
-
-// Auth Helpers
-function loginUser() {
-    const email = document.getElementById('userEmail').value.trim();
-    const pass = document.getElementById('userPassword').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(e => alert(i18n[currentLanguage].errorLogin));
-}
-function registerUser() {
-    const email = document.getElementById('userEmail').value.trim();
-    const pass = document.getElementById('userPassword').value;
-    if (pass.length < 6) return alert("Min 6 märki");
-    auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
-}
-function logout() { auth.signOut().then(() => location.reload()); }
-function resetForm() {
-    editingFirmId = null; selectedLogoFile = null; currentExistingLogoUrl = null;
-    document.getElementById('firmForm').reset();
-    document.getElementById('logoPreview').classList.add('hidden');
-}
