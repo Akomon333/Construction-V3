@@ -18,7 +18,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 3;
 
 let currentUser = null;
 let currentLanguage = localStorage.getItem('selectedLanguage') || 'et';
@@ -37,32 +37,50 @@ const i18n = {
     et: {
         profile: "Minu profiil", postFirm: "+ Postita", addNew: "+ Lisa uus firma", logout: "Logi välja",
         edit: "Muuda", delete: "Kustuta", confirm: "Kas oled kindel?", years: "a. kogemust",
-        loading: "Laeb...", empty: "Tulemusi ei leitud", web: "WEB", call: "Helista:", errorLogin: "Vale e-mail või parool"
+        loading: "Laeb...", empty: "Tulemusi ei leitud", web: "WEB", call: "Helista:", 
+        errorLogin: "Vale e-mail või parool",
+        fillFields: "Palun täida kõik kohustuslikud väljad!",
+        enterEmail: "Palun sisesta e-mail",
+        minChars: "Parool peab olema vähemalt 6 märki pikk",
+        configError: "Süsteemi viga: piltide üleslaadimine pole seadistatud.",
+        success: "Salvestatud!"
     },
     ru: {
         profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти",
         edit: "Изм.", delete: "Удалить", confirm: "Вы уверены?", years: "л. опыта",
-        loading: "Загрузка...", empty: "Ничего не найдено", web: "САЙТ", call: "Звоните:", errorLogin: "Неверный email или пароль"
+        loading: "Загрузка...", empty: "Ничего не найдено", web: "САЙТ", call: "Звоните:", 
+        errorLogin: "Неверный email или пароль",
+        fillFields: "Пожалуйста, заполните все обязательные поля!",
+        enterEmail: "Пожалуйста, введите e-mail",
+        minChars: "Пароль должен быть не менее 6 символов",
+        configError: "Системная ошибка: загрузка изображений не настроена.",
+        success: "Сохранено!"
     }
 };
 
-async function uploadToCloudinary(file) {
-    if (!USE_CLOUDINARY) throw new Error("Cloudinary not configured");
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-    if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error?.message || 'Upload failed');
-    }
-    const data = await resp.json();
-    return data.secure_url;
+// --- NOTIFICATIONS ---
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300); 
+    }, 3500);
 }
 
+// --- FETCHING LOGIC ---
 async function fetchFirms(reset = false) {
     if (isLoading || (!hasMore && !reset)) return;
     isLoading = true;
+
     const grid = document.getElementById('main-grid');
     const loader = document.getElementById('loader-sentinel');
 
@@ -71,10 +89,12 @@ async function fetchFirms(reset = false) {
         lastLoadedKey = null;
         hasMore = true;
     }
+
     if (loader) loader.textContent = i18n[currentLanguage].loading;
 
     try {
         let query = db.ref('allFirms');
+
         if (currentSearch) {
             const searchVal = currentSearch.charAt(0).toUpperCase() + currentSearch.slice(1).toLowerCase();
             query = query.orderByChild('name').startAt(searchVal).endAt(searchVal + '\uf8ff');
@@ -85,8 +105,10 @@ async function fetchFirms(reset = false) {
             if (lastLoadedKey) query = query.endAt(lastLoadedKey);
         }
 
-        const snapshot = await query.limitToLast(PAGE_SIZE + 1).once('value');
+        const limitCount = (lastLoadedKey && !currentSearch) ? PAGE_SIZE + 1 : PAGE_SIZE + 1;
+        const snapshot = await query.limitToLast(limitCount).once('value');
         const data = snapshot.val() || {};
+
         let items = Object.entries(data).map(([key, val]) => ({ key, ...val }));
         items.sort((a, b) => b.key.localeCompare(a.key));
 
@@ -94,8 +116,12 @@ async function fetchFirms(reset = false) {
             items.shift();
         }
 
-        if (items.length <= PAGE_SIZE) hasMore = false;
-        else items = items.slice(0, PAGE_SIZE);
+        if (items.length > PAGE_SIZE) {
+            hasMore = true;
+            items = items.slice(0, PAGE_SIZE);
+        } else {
+            hasMore = false;
+        }
 
         if (items.length > 0) {
             lastLoadedKey = items[items.length - 1].key;
@@ -103,11 +129,25 @@ async function fetchFirms(reset = false) {
         } else if (reset) {
             grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">${i18n[currentLanguage].empty}</p>`;
         }
+
+        if (hasMore) {
+            setTimeout(checkSentinelVisibility, 300);
+        }
+
     } catch (err) {
         console.error("Fetch Error:", err);
     } finally {
         isLoading = false;
         if (loader) loader.textContent = '';
+    }
+}
+
+function checkSentinelVisibility() {
+    const sentinel = document.getElementById('loader-sentinel');
+    if (!sentinel) return;
+    const rect = sentinel.getBoundingClientRect();
+    if (rect.top <= window.innerHeight && !isLoading && hasMore) {
+        fetchFirms();
     }
 }
 
@@ -138,29 +178,30 @@ function renderItems(items) {
     grid.appendChild(fragment);
 }
 
-auth.onAuthStateChanged(user => {
-    currentUser = user;
-    updateAuthUI();
-    if (user) {
-        loadUserFirms();
-    } else {
-        if (userFirmsListener) {
-            db.ref(`firms/${userFirmsListener}`).off('value');
-            userFirmsListener = null;
-        }
-    }
-});
-
-function updateAuthUI() {
-    const btn = document.querySelector('.add-firm-btn');
-    if (btn) btn.textContent = currentUser ? i18n[currentLanguage].profile : i18n[currentLanguage].postFirm;
+// --- CLOUDINARY & FORM SUBMISSION ---
+async function uploadToCloudinary(file) {
+    if (typeof USE_CLOUDINARY === 'undefined' || !USE_CLOUDINARY) throw new Error(i18n[currentLanguage].configError);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+    if (!resp.ok) throw new Error('Upload failed');
+    const data = await resp.json();
+    return data.secure_url;
 }
 
 async function submitFirm() {
     if (!currentUser) return;
     const name = document.getElementById('firmName').value.trim();
-    const phone = document.getElementById('firmPhone').value.trim();
-    if (!name || !phone) return alert("Täida väljad!");
+    let rawPhone = document.getElementById('firmPhone').value.trim();
+    
+    if (!name || !rawPhone) return showToast(i18n[currentLanguage].fillFields, 'error');
+
+    // Add +372 if missing
+    let phone = rawPhone;
+    if (!phone.startsWith('+')) {
+        phone = '+372 ' + phone.replace(/^0/, ''); 
+    }
 
     const submitBtn = document.querySelector('#firmStep .submit-btn');
     if (submitBtn) submitBtn.disabled = true;
@@ -168,11 +209,6 @@ async function submitFirm() {
     try {
         let logoUrl = currentExistingLogoUrl || null;
         if (selectedLogoFile) {
-            if (!USE_CLOUDINARY) {
-                alert("Logo upload not configured. Please set CLOUDINARY_CLOUD_NAME and CLOUDINARY_PRESET.");
-                if (submitBtn) submitBtn.disabled = false;
-                return;
-            }
             logoUrl = await uploadToCloudinary(selectedLogoFile);
         }
 
@@ -194,20 +230,67 @@ async function submitFirm() {
         updates[`/firms/${currentUser.uid}/${firmId}`] = firmData;
         updates[`/allFirms/${firmId}`] = firmData;
         await db.ref().update(updates);
+        
+        showToast(i18n[currentLanguage].success, 'success');
         showSuccessStep();
         fetchFirms(true);
     } catch (e) {
-        alert(e.message);
+        showToast(e.message, 'error');
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
 
-function loadUserFirms() {
-    if (!currentUser) return;
+// --- AUTH & LISTENERS ---
+auth.onAuthStateChanged(user => {
+    currentUser = user;
+    updateAuthUI();
+    if (user) loadUserFirms();
+    else if (userFirmsListener) {
+        db.ref(`firms/${userFirmsListener}`).off('value');
+        userFirmsListener = null;
+    }
+});
+
+function updateAuthUI() {
+    const btn = document.querySelector('.add-firm-btn');
+    if (btn) btn.textContent = currentUser ? i18n[currentLanguage].profile : i18n[currentLanguage].postFirm;
+}
+
+function loginUser() {
+    const email = document.getElementById('userEmail').value.trim();
+    const pass = document.getElementById('userPassword').value;
+    if (!email || !pass) return showToast(i18n[currentLanguage].fillFields, 'error');
+    auth.signInWithEmailAndPassword(email, pass)
+        .then(() => showUserFirmsStep())
+        .catch(() => showToast(i18n[currentLanguage].errorLogin, 'error'));
+}
+
+function registerUser() {
+    const email = document.getElementById('userEmail').value.trim();
+    const pass = document.getElementById('userPassword').value;
+    if (!email) return showToast(i18n[currentLanguage].enterEmail, 'error');
+    if (pass.length < 6) return showToast(i18n[currentLanguage].minChars, 'error');
+    auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => showUserFirmsStep())
+        .catch(e => showToast(e.message, 'error'));
+}
+
+function logout() {
     if (userFirmsListener) {
         db.ref(`firms/${userFirmsListener}`).off('value');
+        userFirmsListener = null;
     }
+    auth.signOut().then(() => {
+        currentUser = null;
+        updateAuthUI();
+        closePostFirmModal();
+    });
+}
+
+function loadUserFirms() {
+    if (!currentUser) return;
+    if (userFirmsListener) db.ref(`firms/${userFirmsListener}`).off('value');
     userFirmsListener = currentUser.uid;
 
     db.ref(`firms/${currentUser.uid}`).on('value', snap => {
@@ -235,51 +318,40 @@ function loadUserFirms() {
 
 async function openEdit(firmId) {
     if (!currentUser) return;
-    try {
-        const snap = await db.ref(`firms/${currentUser.uid}/${firmId}`).once('value');
-        const d = snap.val();
-        if (!d) return;
+    const snap = await db.ref(`firms/${currentUser.uid}/${firmId}`).once('value');
+    const d = snap.val();
+    if (!d) return;
 
-        editingFirmId = firmId;
-        currentExistingLogoUrl = d.logo || null;
-        selectedLogoFile = null;
+    editingFirmId = firmId;
+    currentExistingLogoUrl = d.logo || null;
+    selectedLogoFile = null;
 
-        document.getElementById('firmName').value = d.name || '';
-        document.getElementById('firmPhone').value = d.phone || '';
-        document.getElementById('firmCity').value = d.city || '';
-        document.getElementById('firmWebsite').value = d.website || '';
-        document.getElementById('firmExperience').value = d.experience || '';
-        document.getElementById('firmCategory').value = d.category || '';
+    document.getElementById('firmName').value = d.name || '';
+    document.getElementById('firmPhone').value = d.phone || '';
+    document.getElementById('firmCity').value = d.city || '';
+    document.getElementById('firmWebsite').value = d.website || '';
+    document.getElementById('firmExperience').value = d.experience || '';
+    document.getElementById('firmCategory').value = d.category || '';
 
-        const preview = document.getElementById('logoPreview');
-        const previewImg = document.getElementById('logoPreviewImg');
-        if (d.logo && preview && previewImg) {
-            previewImg.src = d.logo;
-            preview.classList.remove('hidden');
-        } else if (preview) {
-            preview.classList.add('hidden');
-        }
-
-        showFirmStep();
-    } catch (e) {
-        alert(e.message);
+    const preview = document.getElementById('logoPreview');
+    const previewImg = document.getElementById('logoPreviewImg');
+    if (d.logo && preview && previewImg) {
+        previewImg.src = d.logo;
+        preview.classList.remove('hidden');
     }
+    showFirmStep();
 }
 
 async function deleteFirm(firmId) {
-    if (!currentUser) return;
-    if (!confirm(i18n[currentLanguage].confirm)) return;
-    try {
-        const updates = {};
-        updates[`/firms/${currentUser.uid}/${firmId}`] = null;
-        updates[`/allFirms/${firmId}`] = null;
-        await db.ref().update(updates);
-        fetchFirms(true);
-    } catch (e) {
-        alert(e.message);
-    }
+    if (!currentUser || !confirm(i18n[currentLanguage].confirm)) return;
+    const updates = {};
+    updates[`/firms/${currentUser.uid}/${firmId}`] = null;
+    updates[`/allFirms/${firmId}`] = null;
+    await db.ref().update(updates);
+    fetchFirms(true);
 }
 
+// --- UTILS & NAVIGATION ---
 function handleSearch(val) {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
@@ -345,44 +417,15 @@ function resetForm() {
     if (preview) preview.classList.add('hidden');
 }
 
-function loginUser() {
-    const email = document.getElementById('userEmail').value.trim();
-    const pass = document.getElementById('userPassword').value;
-    if (!email || !pass) return alert("Sisesta e-mail ja parool");
-    auth.signInWithEmailAndPassword(email, pass)
-        .then(() => showUserFirmsStep())
-        .catch(() => alert(i18n[currentLanguage].errorLogin));
-}
-
-function registerUser() {
-    const email = document.getElementById('userEmail').value.trim();
-    const pass = document.getElementById('userPassword').value;
-    if (!email) return alert("Sisesta e-mail");
-    if (pass.length < 6) return alert("Min 6 märki");
-    auth.createUserWithEmailAndPassword(email, pass)
-        .then(() => showUserFirmsStep())
-        .catch(e => alert(e.message));
-}
-
-function logout() {
-    if (userFirmsListener) {
-        db.ref(`firms/${userFirmsListener}`).off('value');
-        userFirmsListener = null;
-    }
-    auth.signOut().then(() => {
-        currentUser = null;
-        updateAuthUI();
-        closePostFirmModal();
-    });
-}
-
 window.addEventListener('load', () => {
     setLang(currentLanguage);
     fetchFirms(true);
 
     const observer = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting && !isLoading && hasMore) fetchFirms();
-    }, { rootMargin: '400px' });
+        if (entries[0].isIntersecting && !isLoading && hasMore) {
+            fetchFirms();
+        }
+    }, { rootMargin: '200px', threshold: 0.1 });
 
     const sentinel = document.getElementById('loader-sentinel');
     if (sentinel) observer.observe(sentinel);
