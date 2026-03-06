@@ -353,3 +353,121 @@ body {
 
 .toast.error { background: #e74c3c; }    
 .toast.success { background: #2ecc71; } 
+
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #2c3e50;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9999;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+}
+.cookie-banner.hidden {
+    display: none;
+}
+.cookie-buttons {
+    display: flex;
+    gap: 10px;
+}
+@media (max-width: 600px) {
+    .cookie-banner {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
+
+.filter-sticky {
+    background: #fff;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* Top Row Styles */
+.nav-top-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.search-wrapper {
+    flex: 1;
+}
+
+.search-wrapper input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+    outline: none;
+}
+
+/* The Blue "Postita" Button */
+.main-blue-btn {
+    background: #007bff; /* Professional Blue */
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.main-blue-btn:hover {
+    background: #0056b3;
+}
+
+/* Categories Grid (The Wrapping Part) */
+.nav-categories-grid {
+    display: flex;
+    flex-wrap: wrap; /* This allows buttons to go to the next line */
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+.filter-btn {
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn.active {
+    background: #343a40;
+    color: white;
+    border-color: #343a40;
+}
+
+.city-select-nav {
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+/* Responsive adjustment: Make buttons slightly bigger for thumbs on mobile */
+@media (max-width: 600px) {
+    .filter-btn {
+        padding: 10px 16px;
+        flex-grow: 1; /* Makes them fill the row evenly on small screens */
+        text-align: center;
+    }
+}

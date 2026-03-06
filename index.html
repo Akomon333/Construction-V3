@@ -6,6 +6,13 @@
     <title>EhitusTurg | Kataloog</title>
     <link rel="stylesheet" href="style.css">
 </head>
+<div id="cookieBanner" class="cookie-banner hidden">
+    <p data-et="See veebileht kasutab küpsiseid liikluse analüüsimiseks." data-ru="Этот сайт использует файлы cookie для анализа трафика.">See veebileht kasutab küpsiseid liikluse analüüsimiseks.</p>
+    <div class="cookie-buttons">
+        <button onclick="acceptCookies()" class="submit-btn" data-et="Nõustun" data-ru="Принять">Nõustun</button>
+        <button onclick="declineCookies()" class="back-btn" data-et="Keeldu" data-ru="Отклонить">Keeldu</button>
+    </div>
+</div>
 <body>
 
 <div class="lang-bar">
@@ -21,23 +28,43 @@
 
 <nav class="filter-sticky">
     <div class="container">
-        <div class="search-container" style="margin-bottom: 15px;">
-            <input type="text" id="searchInput" 
-                   data-et="Otsi firma nime järgi..." 
-                   data-ru="Поиск по названию..." 
-                   placeholder="Otsi firma nime järgi..."
-                   oninput="handleSearch(this.value)"
-                   style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 1rem;">
+        <div class="nav-top-row">
+            <div class="search-wrapper">
+                <input type="text" id="searchInput" 
+                       data-et="Otsi firma nime järgi..." 
+                       data-ru="Поиск по названию..." 
+                       placeholder="Otsi firma nime järgi..."
+                       oninput="handleSearch(this.value)">
+            </div>
+            <button class="add-firm-btn main-blue-btn" onclick="openPostFirmModal()" data-et="+ Postita" data-ru="+ Разместить">+ Postita</button>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-            <div class="scroll-x">
-                <button class="filter-btn active" onclick="filterCat('all', this)" data-et="Kõik" data-ru="Все">Kõik</button>
-                <button class="filter-btn" onclick="filterCat('wood', this)" data-et="Puit" data-ru="Дерево">Puit</button>
-                <button class="filter-btn" onclick="filterCat('stone', this)" data-et="Kivid" data-ru="Камень">Kivid</button>
-                <button class="filter-btn" onclick="filterCat('tools', this)" data-et="Tööriistad" data-ru="Инструменты">Tööriistad</button>
-            </div>
-            <button class="add-firm-btn" onclick="openPostFirmModal()" data-et="+ Postita" data-ru="+ Разместить">+ Postita</button>
+        <div class="nav-categories-grid">
+            <button class="filter-btn active" onclick="filterCat('all', this)" data-et="Kõik" data-ru="Все">Kõik</button>
+            <button class="filter-btn" onclick="filterCat('construction', this)" data-et="Ehitus" data-ru="Строительство">Ehitus</button>
+            <button class="filter-btn" onclick="filterCat('renovation', this)" data-et="Renoveerimine" data-ru="Ремонт">Renoveerimine</button>
+            <button class="filter-btn" onclick="filterCat('electrical', this)" data-et="Elektritööd" data-ru="Электрика">Elektritööd</button>
+            <button class="filter-btn" onclick="filterCat('plumbing', this)" data-et="Torustik" data-ru="Сантехника">Torustik</button>
+            <button class="filter-btn" onclick="filterCat('roofing', this)" data-et="Katused" data-ru="Кровля">Katused</button>
+            <button class="filter-btn" onclick="filterCat('flooring', this)" data-et="Põrandad" data-ru="Полы">Põrandad</button>
+            <button class="filter-btn" onclick="filterCat('painting', this)" data-et="Värvimine" data-ru="Покраска">Värvimine</button>
+            <button class="filter-btn" onclick="filterCat('carpentry', this)" data-et="Puusepatööd" data-ru="Плотницкие работы">Puusepatööd</button>
+            <button class="filter-btn" onclick="filterCat('masonry', this)" data-et="Müüritööd" data-ru="Каменные работы">Müüritööd</button>
+            <button class="filter-btn" onclick="filterCat('insulation', this)" data-et="Soojustus" data-ru="Утепление">Soojustus</button>
+            <button class="filter-btn" onclick="filterCat('windows', this)" data-et="Aknad" data-ru="Окна и двери">Aknad</button>
+            <button class="filter-btn" onclick="filterCat('landscaping', this)" data-et="Haljastus" data-ru="Ландшафт">Haljastus</button>
+            <button class="filter-btn" onclick="filterCat('cleaning', this)" data-et="Koristus" data-ru="Уборка">Koristus</button>
+            <button class="filter-btn" onclick="filterCat('demolition', this)" data-et="Lammutus" data-ru="Демонтаж">Lammutus</button>
+            
+            <select id="cityFilter" onchange="filterCity(this.value)" class="city-select-nav">
+                <option value="all" data-et="Kõik linnad" data-ru="Все города">Kõik linnad</option>
+                <option value="tallinn">Tallinn</option>
+                <option value="tartu">Tartu</option>
+                <option value="narva">Narva</option>
+                <option value="parnu">Pärnu</option>
+                <option value="kohtla-jarve">Kohtla-Järve</option>
+                <option value="muu" data-et="Muu" data-ru="Другое">Muu</option>
+            </select>
         </div>
     </div>
 </nav>
@@ -84,16 +111,35 @@
                 <div class="form-group">
                     <label for="firmCategory" data-et="Kategooria" data-ru="Категория">Kategooria</label>
                     <select id="firmCategory" required class="form-input">
-                        <option value="">-- Valige --</option>
-                        <option value="wood" data-et="Puit" data-ru="Дерево">Puit</option>
-                        <option value="stone" data-et="Kivid" data-ru="Камень">Kivid</option>
-                        <option value="tools" data-et="Tööriistad" data-ru="Инструменты">Tööriistad</option>
+                       <option value="">Vali kategooria</option>
+                       <option value="construction" data-et="Ehitus" data-ru="Строительство">Ehitus</option>
+                       <option value="renovation" data-et="Renoveerimine" data-ru="Ремонт">Renoveerimine</option>
+                       <option value="electrical" data-et="Elektritööd" data-ru="Электрика">Elektritööd</option>
+                       <option value="plumbing" data-et="Torustik" data-ru="Сантехника">Torustik</option>
+                       <option value="roofing" data-et="Katused" data-ru="Кровля">Katused</option>
+                       <option value="flooring" data-et="Põrandad" data-ru="Полы">Põrandad</option>
+                       <option value="painting" data-et="Värvimine" data-ru="Покраска">Värvimine</option>
+                       <option value="carpentry" data-et="Puusepatööd" data-ru="Плотницкие работы">Puusepatööd</option>
+                       <option value="masonry" data-et="Müüritööd" data-ru="Каменные работы">Müüritööd</option>
+                       <option value="insulation" data-et="Soojustus" data-ru="Утепление">Soojustus</option>
+                       <option value="windows" data-et="Aknad" data-ru="Окна и двери">Aknad</option>
+                       <option value="landscaping" data-et="Haljastus" data-ru="Ландшафт">Haljastus</option>
+                       <option value="cleaning" data-et="Koristus" data-ru="Уборка">Koristus</option>
+                       <option value="demolition" data-et="Lammutus" data-ru="Демонтаж">Lammutus</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label for="firmCity" data-et="Linn" data-ru="Город">Linn</label>
-                    <input type="text" id="firmCity" required class="form-input">
+                    <select id="firmCity" required class="form-input">
+                        <option value="" disabled selected data-et="Vali linn" data-ru="Выберите город">Vali linn</option>
+                        <option value="tallinn">Tallinn</option>
+                        <option value="tartu">Tartu</option>
+                        <option value="narva">Narva</option>
+                        <option value="parnu">Pärnu</option>
+                        <option value="kohtla-jarve">Kohtla-Järve</option>
+                        <option value="muu" data-et="Muu" data-ru="Другое">Muu</option>
+                    </select>
                 </div>
 
                 <div class="form-group">

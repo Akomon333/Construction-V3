@@ -18,7 +18,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 10; // Increased for better UX with many filters
 
 let currentUser = null;
 let currentLanguage = localStorage.getItem('selectedLanguage') || 'et';
@@ -28,7 +28,10 @@ let editingFirmId = null;
 let lastLoadedKey = null;
 let isLoading = false;
 let hasMore = true;
+
+// --- STATE MANAGEMENT ---
 let currentCategory = 'all';
+let currentCity = 'all'; // Added City state
 let currentSearch = '';
 let searchTimer = null;
 let userFirmsListener = null;
@@ -43,7 +46,11 @@ const i18n = {
         enterEmail: "Palun sisesta e-mail",
         minChars: "Parool peab olema vähemalt 6 märki pikk",
         configError: "Süsteemi viga: piltide üleslaadimine pole seadistatud.",
-        success: "Salvestatud!"
+        success: "Salvestatud!",
+        duplicateName: "Firma selle nimega on juba olemas!",
+        cookieText: "See veebileht kasutab küpsiseid liikluse analüüsimiseks.",
+        accept: "Nõustun",
+        decline: "Keeldu"
     },
     ru: {
         profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти",
@@ -54,7 +61,11 @@ const i18n = {
         enterEmail: "Пожалуйста, введите e-mail",
         minChars: "Пароль должен быть не менее 6 символов",
         configError: "Системная ошибка: загрузка изображений не настроена.",
-        success: "Сохранено!"
+        success: "Сохранено!",
+        duplicateName: "Фирма с таким названием уже существует!",
+        cookieText: "Этот сайт использует файлы cookie для анализа трафика.",
+        accept: "Принять",
+        decline: "Отклонить"
     }
 };
 
@@ -62,14 +73,11 @@ const i18n = {
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
-
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
-
     container.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
-
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300); 
@@ -95,21 +103,36 @@ async function fetchFirms(reset = false) {
     try {
         let query = db.ref('allFirms');
 
+        // PRIORITY LOGIC FOR FIREBASE QUERIES
         if (currentSearch) {
             const searchVal = currentSearch.charAt(0).toUpperCase() + currentSearch.slice(1).toLowerCase();
             query = query.orderByChild('name').startAt(searchVal).endAt(searchVal + '\uf8ff');
+            
+        } else if (currentCategory !== 'all' && currentCity !== 'all') {
+            // FILTER BY BOTH (Using the composite key category_city)
+            query = query.orderByChild('category_city').equalTo(`${currentCategory}_${currentCity}`);
+            
         } else if (currentCategory !== 'all') {
+            // FILTER BY CATEGORY ONLY
             query = query.orderByChild('category').equalTo(currentCategory);
+            
+        } else if (currentCity !== 'all') {
+            // FILTER BY CITY ONLY
+            query = query.orderByChild('city').equalTo(currentCity);
+            
         } else {
+            // NO FILTERS - DEFAULT LOAD
             query = query.orderByKey();
             if (lastLoadedKey) query = query.endAt(lastLoadedKey);
         }
 
-        const limitCount = (lastLoadedKey && !currentSearch) ? PAGE_SIZE + 1 : PAGE_SIZE + 1;
+        const limitCount = PAGE_SIZE + 1;
         const snapshot = await query.limitToLast(limitCount).once('value');
         const data = snapshot.val() || {};
 
         let items = Object.entries(data).map(([key, val]) => ({ key, ...val }));
+        
+        // Reverse for newest first (Firebase returns oldest first)
         items.sort((a, b) => b.key.localeCompare(a.key));
 
         if (lastLoadedKey && items.length > 0 && items[0].key === lastLoadedKey) {
@@ -130,24 +153,11 @@ async function fetchFirms(reset = false) {
             grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">${i18n[currentLanguage].empty}</p>`;
         }
 
-        if (hasMore) {
-            setTimeout(checkSentinelVisibility, 300);
-        }
-
     } catch (err) {
         console.error("Fetch Error:", err);
     } finally {
         isLoading = false;
         if (loader) loader.textContent = '';
-    }
-}
-
-function checkSentinelVisibility() {
-    const sentinel = document.getElementById('loader-sentinel');
-    if (!sentinel) return;
-    const rect = sentinel.getBoundingClientRect();
-    if (rect.top <= window.innerHeight && !isLoading && hasMore) {
-        fetchFirms();
     }
 }
 
@@ -166,7 +176,7 @@ function renderItems(items) {
             <div class="firm-main">
                 <h2 class="name">${escapeHtml(firm.name || '')}</h2>
                 <div class="meta-data">
-                    <span>${escapeHtml(firm.city || '')}</span> • <span>${firm.experience || 0} ${i18n[currentLanguage].years}</span>
+                    <span style="text-transform: capitalize;">${escapeHtml(firm.city || '')}</span> • <span>${firm.experience || 0} ${i18n[currentLanguage].years}</span>
                 </div>
             </div>
             <div class="firm-actions">
@@ -178,26 +188,33 @@ function renderItems(items) {
     grid.appendChild(fragment);
 }
 
-// --- CLOUDINARY & FORM SUBMISSION ---
-async function uploadToCloudinary(file) {
-    if (typeof USE_CLOUDINARY === 'undefined' || !USE_CLOUDINARY) throw new Error(i18n[currentLanguage].configError);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-    if (!resp.ok) throw new Error('Upload failed');
-    const data = await resp.json();
-    return data.secure_url;
-}
-
+// --- FORM SUBMISSION ---
 async function submitFirm() {
     if (!currentUser) return;
+    
     const name = document.getElementById('firmName').value.trim();
+    const catValue = document.getElementById('firmCategory').value;
+    const cityValue = document.getElementById('firmCity').value;
     let rawPhone = document.getElementById('firmPhone').value.trim();
     
-    if (!name || !rawPhone) return showToast(i18n[currentLanguage].fillFields, 'error');
+    if (!name || !rawPhone || !catValue || !cityValue) {
+        return showToast(i18n[currentLanguage].fillFields, 'error');
+    }
 
-    // Add +372 if missing
+    const existingSnap = await db.ref('allFirms').orderByChild('name').equalTo(name).once('value');
+    if (existingSnap.exists()) {
+        let isDuplicate = false;
+        existingSnap.forEach(child => {
+            if (child.key !== editingFirmId) {
+                isDuplicate = true;
+            }
+        });
+        
+        if (isDuplicate) {
+            return showToast(i18n[currentLanguage].duplicateName, 'error');
+        }
+    }
+
     let phone = rawPhone;
     if (!phone.startsWith('+')) {
         phone = '+372 ' + phone.replace(/^0/, ''); 
@@ -213,12 +230,14 @@ async function submitFirm() {
         }
 
         const firmId = editingFirmId || db.ref().child('allFirms').push().key;
+        
         const firmData = {
             id: firmId,
             uid: currentUser.uid,
             name,
-            category: document.getElementById('firmCategory').value,
-            city: document.getElementById('firmCity').value.trim(),
+            category: catValue,
+            city: cityValue,
+            category_city: `${catValue}_${cityValue}`, // AUTO-ASSIGNED COMPOSITE KEY
             phone,
             website: document.getElementById('firmWebsite').value.trim(),
             experience: parseInt(document.getElementById('firmExperience').value) || 0,
@@ -229,6 +248,7 @@ async function submitFirm() {
         const updates = {};
         updates[`/firms/${currentUser.uid}/${firmId}`] = firmData;
         updates[`/allFirms/${firmId}`] = firmData;
+        
         await db.ref().update(updates);
         
         showToast(i18n[currentLanguage].success, 'success');
@@ -241,15 +261,60 @@ async function submitFirm() {
     }
 }
 
-// --- AUTH & LISTENERS ---
+// --- NAVIGATION & FILTERS ---
+function handleSearch(val) {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        currentSearch = val.trim();
+        fetchFirms(true);
+    }, 500);
+}
+
+function filterCat(cat, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCategory = cat;
+    currentSearch = ''; // Reset search on filter
+    fetchFirms(true);
+}
+
+function filterCity(city) {
+    currentCity = city;
+    currentSearch = ''; // Reset search on filter
+    fetchFirms(true);
+}
+
+async function openEdit(firmId) {
+    if (!currentUser) return;
+    const snap = await db.ref(`firms/${currentUser.uid}/${firmId}`).once('value');
+    const d = snap.val();
+    if (!d) return;
+
+    editingFirmId = firmId;
+    currentExistingLogoUrl = d.logo || null;
+    selectedLogoFile = null;
+
+    document.getElementById('firmName').value = d.name || '';
+    document.getElementById('firmPhone').value = d.phone || '';
+    document.getElementById('firmCity').value = d.city || ''; // Works because it's now a <select>
+    document.getElementById('firmWebsite').value = d.website || '';
+    document.getElementById('firmExperience').value = d.experience || '';
+    document.getElementById('firmCategory').value = d.category || '';
+
+    const preview = document.getElementById('logoPreview');
+    const previewImg = document.getElementById('logoPreviewImg');
+    if (d.logo && preview && previewImg) {
+        previewImg.src = d.logo;
+        preview.classList.remove('hidden');
+    }
+    showFirmStep();
+}
+
+// --- EXISTING AUTH & UTILS ---
 auth.onAuthStateChanged(user => {
     currentUser = user;
     updateAuthUI();
     if (user) loadUserFirms();
-    else if (userFirmsListener) {
-        db.ref(`firms/${userFirmsListener}`).off('value');
-        userFirmsListener = null;
-    }
 });
 
 function updateAuthUI() {
@@ -277,10 +342,6 @@ function registerUser() {
 }
 
 function logout() {
-    if (userFirmsListener) {
-        db.ref(`firms/${userFirmsListener}`).off('value');
-        userFirmsListener = null;
-    }
     auth.signOut().then(() => {
         currentUser = null;
         updateAuthUI();
@@ -290,56 +351,27 @@ function logout() {
 
 function loadUserFirms() {
     if (!currentUser) return;
-    if (userFirmsListener) db.ref(`firms/${userFirmsListener}`).off('value');
-    userFirmsListener = currentUser.uid;
-
     db.ref(`firms/${currentUser.uid}`).on('value', snap => {
         const container = document.getElementById('userFirmsList');
         if (!container) return;
         const data = snap.val() || {};
-
         container.innerHTML = `
             <button onclick="resetForm(); showFirmStep()" class="submit-btn">${i18n[currentLanguage].addNew}</button>
-            <button onclick="logout()" class="back-btn">${i18n[currentLanguage].logout}</button>`;
+            <button onclick="logout()" class="back-btn" style="margin-top:10px; background:#95a5a6;">${i18n[currentLanguage].logout}</button>`;
 
         Object.keys(data).forEach(id => {
             const d = document.createElement('div');
             d.className = "user-firm-item";
+            d.style = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;";
             d.innerHTML = `
                 <span>${escapeHtml(data[id].name || '')}</span>
                 <div>
-                    <button onclick="openEdit('${id}')" style="color:var(--primary);border:none;background:none;cursor:pointer;">${i18n[currentLanguage].edit}</button>
-                    <button onclick="deleteFirm('${id}')" style="color:var(--error);border:none;background:none;cursor:pointer;margin-left:10px;">${i18n[currentLanguage].delete}</button>
+                    <button onclick="openEdit('${id}')" style="color:#2ecc71;border:none;background:none;cursor:pointer;font-weight:bold;">${i18n[currentLanguage].edit}</button>
+                    <button onclick="deleteFirm('${id}')" style="color:#e74c3c;border:none;background:none;cursor:pointer;margin-left:15px;font-weight:bold;">${i18n[currentLanguage].delete}</button>
                 </div>`;
             container.appendChild(d);
         });
     });
-}
-
-async function openEdit(firmId) {
-    if (!currentUser) return;
-    const snap = await db.ref(`firms/${currentUser.uid}/${firmId}`).once('value');
-    const d = snap.val();
-    if (!d) return;
-
-    editingFirmId = firmId;
-    currentExistingLogoUrl = d.logo || null;
-    selectedLogoFile = null;
-
-    document.getElementById('firmName').value = d.name || '';
-    document.getElementById('firmPhone').value = d.phone || '';
-    document.getElementById('firmCity').value = d.city || '';
-    document.getElementById('firmWebsite').value = d.website || '';
-    document.getElementById('firmExperience').value = d.experience || '';
-    document.getElementById('firmCategory').value = d.category || '';
-
-    const preview = document.getElementById('logoPreview');
-    const previewImg = document.getElementById('logoPreviewImg');
-    if (d.logo && preview && previewImg) {
-        previewImg.src = d.logo;
-        preview.classList.remove('hidden');
-    }
-    showFirmStep();
 }
 
 async function deleteFirm(firmId) {
@@ -351,21 +383,15 @@ async function deleteFirm(firmId) {
     fetchFirms(true);
 }
 
-// --- UTILS & NAVIGATION ---
-function handleSearch(val) {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-        currentSearch = val.trim();
-        fetchFirms(true);
-    }, 500);
-}
-
-function filterCat(cat, btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentCategory = cat;
-    currentSearch = '';
-    fetchFirms(true);
+async function uploadToCloudinary(file) {
+    if (typeof USE_CLOUDINARY === 'undefined' || !USE_CLOUDINARY) throw new Error(i18n[currentLanguage].configError);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    const resp = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+    if (!resp.ok) throw new Error('Upload failed');
+    const data = await resp.json();
+    return data.secure_url;
 }
 
 function setLang(lang) {
@@ -373,6 +399,7 @@ function setLang(lang) {
     localStorage.setItem('selectedLanguage', lang);
     document.querySelectorAll('[data-et]').forEach(el => {
         el.textContent = el.getAttribute(`data-${lang}`);
+        if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = el.getAttribute(`data-${lang}`);
     });
     updateAuthUI();
 }
@@ -421,6 +448,7 @@ window.addEventListener('load', () => {
     setLang(currentLanguage);
     fetchFirms(true);
 
+    // Infinite Scroll logic
     const observer = new IntersectionObserver(entries => {
         if (entries[0].isIntersecting && !isLoading && hasMore) {
             fetchFirms();
@@ -446,3 +474,49 @@ window.addEventListener('load', () => {
         });
     }
 });
+
+function initCookies() {
+    const consent = localStorage.getItem('cookieConsent');
+    const banner = document.getElementById('cookieBanner');
+    
+    if (!consent) {
+        if (banner) banner.classList.remove('hidden');
+    } else if (consent === 'accepted') {
+        loadAnalytics();
+    }
+}
+
+function acceptCookies() {
+    localStorage.setItem('cookieConsent', 'accepted');
+    document.getElementById('cookieBanner').classList.add('hidden');
+    loadAnalytics();
+    showToast(currentLanguage === 'et' ? "Küpsised lubatud" : "Cookies accepted", 'success');
+}
+
+function declineCookies() {
+    localStorage.setItem('cookieConsent', 'declined');
+    document.getElementById('cookieBanner').classList.add('hidden');
+}
+
+function loadAnalytics() {
+    const gaId = 'G-XXXXXXXXXX'; // <-- REPLACE THIS WITH YOUR ID FROM GOOGLE
+    
+    if (document.getElementById('ga-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'ga-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    
+    // LEGAL CONFIG: Anonymize IP and disable ad-personalization by default
+    gtag('config', gaId, { 
+        'anonymize_ip': true,
+        'allow_google_signals': false,
+        'allow_ad_personalization_signals': false
+    });
+}
