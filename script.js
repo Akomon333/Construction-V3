@@ -53,7 +53,9 @@ const i18n = {
         premiumActive: "Premium Aktiivne",
         premiumBadge: "SOOVITATUD",
         forgotPass: "Unustasid parooli?",
-        resetSent: "Parooli lähtestamise link saadeti e-mailile!"
+        resetSent: "Parooli lähtestamise link saadeti e-mailile!",
+        loginToRate: "Hindamiseks pead sisse logima!",
+        ratingSaved: "Hinnang antud!"
     },
     ru: {
         profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти",
@@ -73,7 +75,9 @@ const i18n = {
         premiumActive: "Premium Активен",
         premiumBadge: "РЕКОМЕНДУЕМ",
         forgotPass: "Забыли пароль?",
-        resetSent: "Ссылка для сброса пароля отправлена на email!"
+        resetSent: "Ссылка для сброса пароля отправлена на email!",
+        loginToRate: "Войдите, чтобы оценить!",
+        ratingSaved: "Оценка сохранена!"
     }
 };
 
@@ -176,6 +180,18 @@ function renderItems(items) {
         const badgeHtml = firm.isPremium 
             ? `<div class="premium-badge">🌟 ${i18n[currentLanguage].premiumBadge}</div>` 
             : '';
+
+        let starsHtml = `<div class="rating-container">`;
+        const avgRating = Math.round(firm.ratingAvg || 0); 
+        
+        for (let i = 1; i <= 5; i++) {
+            starsHtml += `<span class="star ${i <= avgRating ? 'filled' : ''}" onclick="rateFirm('${firm.key}', '${firm.uid}', ${i})">★</span>`;
+        }
+        
+        const exactAvg = Number(firm.ratingAvg || 0).toFixed(1);
+        const ratingCount = firm.ratingCount || 0;
+        starsHtml += `<span class="rating-score">${exactAvg} (${ratingCount})</span></div>`;
+
         row.innerHTML = `
             ${badgeHtml}
             <div class="firm-image"><img src="${thumbUrl}" loading="lazy" alt="logo"></div>
@@ -183,7 +199,7 @@ function renderItems(items) {
                 <h2 class="name">${escapeHtml(firm.name || '')}</h2>
                 <div class="meta-data">
                     <span style="text-transform: capitalize;">${escapeHtml(firm.city || '')}</span> • <span>${firm.experience || 0} ${i18n[currentLanguage].years}</span>
-                </div>
+                </div>${starsHtml}
             </div>
             <div class="firm-actions">
                 <a href="tel:${(firm.phone || '').replace(/\s/g, '')}" class="tel-link">${escapeHtml(firm.phone || '')}</a>
@@ -546,5 +562,35 @@ function closePremiumModal() {
     const modal = document.getElementById('premiumModal');
     if (modal) {
         modal.style.display = 'none';
+    }
+}
+
+async function rateFirm(firmId, ownerUid, score) {
+    if (!currentUser) return showToast(i18n[currentLanguage].loginToRate, 'error');
+    
+    if (currentUser.uid === ownerUid) {
+        return showToast(currentLanguage === 'et' ? "Oma firmat ei saa hinnata!" : "Нельзя оценивать свою фирму!", 'error');
+    }
+
+    try {
+        await db.ref(`ratings/${firmId}/${currentUser.uid}`).set(score);
+        
+        const snap = await db.ref(`ratings/${firmId}`).once('value');
+        const ratings = Object.values(snap.val() || {});
+        const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        
+        const updates = {};
+        const ratingData = { ratingAvg: avg.toFixed(1), ratingCount: ratings.length };
+        
+        updates[`/allFirms/${firmId}/ratingAvg`] = ratingData.ratingAvg;
+        updates[`/allFirms/${firmId}/ratingCount`] = ratingData.ratingCount;
+        updates[`/firms/${ownerUid}/${firmId}/ratingAvg`] = ratingData.ratingAvg;
+        updates[`/firms/${ownerUid}/${firmId}/ratingCount`] = ratingData.ratingCount;
+
+        await db.ref().update(updates);
+        showToast(i18n[currentLanguage].ratingSaved, 'success');
+        fetchFirms(true); 
+    } catch (e) {
+        showToast("Viga salvestamisel", 'error');
     }
 }
