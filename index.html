@@ -6,13 +6,6 @@
     <title>EhitusTurg | Kataloog</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<div id="cookieBanner" class="cookie-banner hidden">
-    <p data-et="See veebileht kasutab küpsiseid liikluse analüüsimiseks." data-ru="Этот сайт использует файлы cookie для анализа трафика.">See veebileht kasutab küpsiseid liikluse analüüsimiseks.</p>
-    <div class="cookie-buttons">
-        <button onclick="acceptCookies()" class="submit-btn" data-et="Nõustun" data-ru="Принять">Nõustun</button>
-        <button onclick="declineCookies()" class="back-btn" data-et="Keeldu" data-ru="Отклонить">Keeldu</button>
-    </div>
-</div>
 <body>
 
 <div class="lang-bar">
@@ -193,6 +186,42 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <div id="toast-container" class="toast-container"></div>
+<div id="premiumModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-header" style="justify-content: center; position: relative;">
+            <h2 data-et="Telli Premium ⭐" data-ru="Заказать Premium ⭐" style="color: #d4af37;">Telli Premium ⭐</h2>
+            <button class="close-btn" onclick="closePremiumModal()" style="position: absolute; right: 0;">×</button>
+        </div>
+        
+        <div style="padding: 20px 0;">
+            <p style="font-size: 1.1rem; margin-bottom: 15px;" 
+               data-et="Premium kuulutus on alati eespool ja esile tõstetud kuldse raamiga." 
+               data-ru="Премиум-объявление всегда наверху и выделено золотой рамкой.">
+               Premium kuulutus on alati eespool ja esile tõstetud kuldse raamiga.
+            </p>
+            
+            <h3 style="font-size: 1.8rem; margin-bottom: 20px; color: #333;">9.99€ <span style="font-size: 1rem; color: #666;">/ kuu</span></h3>
+            
+            <p style="margin-bottom: 15px;" 
+               data-et="Tellimiseks saada meile e-kiri oma firma nimega aadressile:" 
+               data-ru="Для заказа отправьте письмо с названием вашей компании на адрес:">
+               Tellimiseks saada meile e-kiri oma firma nimega aadressile:
+            </p>
+            
+            <a href="mailto:info@ehitusturg.ee" style="font-size: 1.2rem; font-weight: bold; color: #007bff; text-decoration: none; display: inline-block; padding: 15px 25px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
+                info@ehitusturg.ee
+            </a>
+            
+            <p style="font-size: 0.9rem; color: #666;" 
+               data-et="Saadame teile e-arve ja aktiveerime Premium staatuse kohe pärast laekumist." 
+               data-ru="Мы отправим вам счет и активируем статус Premium сразу после оплаты.">
+               Saadame teile e-arve ja aktiveerime Premium staatuse kohe pärast laekumist.
+            </p>
+        </div>
+        
+        <button onclick="closePremiumModal()" class="submit-btn" style="background: #95a5a6;" data-et="Sulge" data-ru="Закрыть">Sulge</button>
+    </div>
+</div>
 <script src="script.js"></script>
 </body>
 </html>

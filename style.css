@@ -471,3 +471,46 @@ body {
         text-align: center;
     }
 }
+
+.firm-card.premium {
+    border: 2px solid #ffd700; /* Gold border */
+    background: #fffcf0; /* Very light gold background */
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+    position: relative;
+}
+
+.premium-badge {
+    position: absolute;
+    top: -12px;
+    right: 15px;
+    background: #ffd700;
+    color: #333;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Upgrade Button inside the user's profile */
+.upgrade-btn {
+    background: linear-gradient(135deg, #ffd700, #ffb900);
+    color: #333;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+.upgrade-btn:hover {
+    background: linear-gradient(135deg, #ffb900, #ff9900);
+}
