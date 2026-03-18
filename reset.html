@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EhitusTurg | Uue parooli määramine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f7f6;">
+
+    <div class="modal-content" style="max-width:400px; width:90%; position:static;">
+        <h2 id="resetTitle">Uus parool</h2>
+        <p id="resetMsg" style="font-size:0.9rem; color:#666; margin-bottom:20px;">Sisesta oma uus salasõna.</p>
+        
+        <div id="resetForm">
+            <input type="password" id="newPassword" placeholder="Uus parool (min 6 märki)" class="form-input" style="margin-bottom:15px;">
+            <button onclick="handlePasswordReset()" class="submit-btn" id="resetBtn">Salvesta uus parool</button>
+        </div>
+        
+        <div id="successArea" class="hidden" style="text-align:center;">
+            <p style="color:#2ecc71; font-weight:bold;">Parool on muudetud!</p>
+            <a href="index.html" class="submit-btn" style="display:block; text-decoration:none; margin-top:15px;">Tagasi avalehele</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Use your SAME config from script.js here
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWbVRiYKugqy8axQ_MOW0P8fM8z4iE7XY",
+            authDomain: "ehitusturg-64173.firebaseapp.com",
+            projectId: "ehitusturg-64173",
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // 1. Get the "oobCode" from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionCode = urlParams.get('oobCode');
+
+        async function handlePasswordReset() {
+            const newPassword = document.getElementById('newPassword').value;
+            const btn = document.getElementById('resetBtn');
+
+            if (newPassword.length < 6) return alert("Liiga lühike parool!");
+            
+            btn.disabled = true;
+            btn.textContent = "Salvestamine...";
+
+            try {
+                // 2. Verify and apply the new password
+                await auth.confirmPasswordReset(actionCode, newPassword);
+                
+                document.getElementById('resetForm').classList.add('hidden');
+                document.getElementById('resetMsg').classList.add('hidden');
+                document.getElementById('successArea').classList.remove('hidden');
+            } catch (error) {
+                alert("Link on aegunud või vigane. Palun telli uus parooli lähtestamine.");
+                btn.disabled = false;
+                btn.textContent = "Salvesta uus parool";
+            }
+        }
+    </script>
+</body>
+</html>

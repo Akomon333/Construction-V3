@@ -75,20 +75,24 @@
         </div>
 
         <div id="authStep" class="modal-step">
-            <p data-et="Logi sisse või registreeru" data-ru="Войти или зарегистрироваться">Logi sisse või registreeru:</p>
-            <div class="form-group">
-                <label for="userEmail">Email</label>
-                <input type="email" id="userEmail" placeholder="your@email.com" class="form-input" required>
-            </div>
-            <div class="form-group">
-                <label for="userPassword" data-et="Salasõna (min 6 tähte)" data-ru="Пароль (мин. 6 символов)">Salasõna (min 6 tähte)</label>
-                <input type="password" id="userPassword" placeholder="******" class="form-input" required>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="loginUser()" class="submit-btn" style="flex: 1;" data-et="Logi sisse" data-ru="Войти">Logi sisse</button>
-                <button onclick="registerUser()" class="submit-btn" style="flex: 1; background: #34495e;" data-et="Registreeru" data-ru="Регистрация">Registreeru</button>
-            </div>
-        </div>
+    <p data-et="Logi sisse või registreeru" data-ru="Войти или зарегистрироваться">Logi sisse või registreeru:</p>
+    <div class="form-group">
+        <label for="userEmail">Email</label>
+        <input type="email" id="userEmail" placeholder="your@email.com" class="form-input" required>
+    </div>
+    <div class="form-group">
+        <label for="userPassword" data-et="Salasõna (min 6 tähte)" data-ru="Пароль (мин. 6 символов)">Salasõna (min 6 tähte)</label>
+        <input type="password" id="userPassword" placeholder="******" class="form-input" required>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button onclick="loginUser()" class="submit-btn" style="flex: 1;" data-et="Logi sisse" data-ru="Войти">Logi sisse</button>
+        <button onclick="registerUser()" class="submit-btn" style="flex: 1; background: #34495e;" data-et="Registreeru" data-ru="Регистрация">Registreeru</button>
+    </div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+        <a href="#" onclick="forgotPassword(); return false;" style="color: #666; font-size: 0.85rem; text-decoration: underline;" data-et="Unustasid parooli?" data-ru="Забыли пароль?">Unustasid parooli?</a>
+    </div>
+</div>
 
         <div id="userFirmsStep" class="modal-step hidden">
             <div id="userFirmsList" class="user-firms-list"></div>

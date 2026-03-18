@@ -55,7 +55,9 @@ const i18n = {
         forgotPass: "Unustasid parooli?",
         resetSent: "Parooli lähtestamise link saadeti e-mailile!",
         loginToRate: "Hindamiseks pead sisse logima!",
-        ratingSaved: "Hinnang antud!"
+        ratingSaved: "Hinnang antud!",
+        erifyEmailSent: "Kinnituslink saadetud e-mailile!",
+        pleaseVerify: "Palun kinnita oma e-posti aadress!"
     },
     ru: {
         profile: "Мой профиль", postFirm: "+ Разместить", addNew: "+ Добавить фирму", logout: "Выйти",
@@ -77,7 +79,9 @@ const i18n = {
         forgotPass: "Забыли пароль?",
         resetSent: "Ссылка для сброса пароля отправлена на email!",
         loginToRate: "Войдите, чтобы оценить!",
-        ratingSaved: "Оценка сохранена!"
+        ratingSaved: "Оценка сохранена!",
+        verifyEmailSent: "Ссылка для подтверждения отправлена!",
+        pleaseVerify: "Пожалуйста, подтвердите email!"
     }
 };
 
@@ -359,8 +363,17 @@ function loginUser() {
     const email = document.getElementById('userEmail').value.trim();
     const pass = document.getElementById('userPassword').value;
     if (!email || !pass) return showToast(i18n[currentLanguage].fillFields, 'error');
+
     auth.signInWithEmailAndPassword(email, pass)
-        .then(() => showUserFirmsStep())
+        .then((userCredential) => {
+            if (!userCredential.user.emailVerified) {
+                userCredential.user.sendEmailVerification(); 
+                showToast(currentLanguage === 'et' ? "E-mail on kinnitamata. Saatsime uue lingi!" : "Email не подтвержден. Мы отправили новую ссылку!", 'info');
+                auth.signOut();
+            } else {
+                showUserFirmsStep();
+            }
+        })
         .catch(() => showToast(i18n[currentLanguage].errorLogin, 'error'));
 }
 
@@ -369,23 +382,27 @@ function registerUser() {
     const pass = document.getElementById('userPassword').value;
     if (!email) return showToast(i18n[currentLanguage].enterEmail, 'error');
     if (pass.length < 6) return showToast(i18n[currentLanguage].minChars, 'error');
+
     auth.createUserWithEmailAndPassword(email, pass)
-        .then(() => showUserFirmsStep())
+        .then((userCredential) => {
+            userCredential.user.sendEmailVerification();
+            showToast(i18n[currentLanguage].verifyEmailSent, 'success');
+            
+            auth.signOut(); 
+            closePostFirmModal();
+        })
         .catch(e => showToast(e.message, 'error'));
 }
 
 function forgotPassword() {
     const email = document.getElementById('userEmail').value.trim();
-    if (!email) {
-        return showToast(i18n[currentLanguage].enterEmail, 'error');
-    }
+    if (!email) return showToast(i18n[currentLanguage].enterEmail, 'error');
+    
     auth.sendPasswordResetEmail(email)
         .then(() => {
             showToast(i18n[currentLanguage].resetSent, 'success');
         })
-        .catch((error) => {
-            showToast(error.message, 'error');
-        });
+        .catch(e => showToast(e.message, 'error'));
 }
 
 function logout() {
@@ -594,3 +611,11 @@ async function rateFirm(firmId, ownerUid, score) {
         showToast("Viga salvestamisel", 'error');
     }
 }
+
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth' 
+    });
+}
+
