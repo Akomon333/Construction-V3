@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EhitusTurg | Kataloog</title>
+    <title>Ehiko</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
 
 <header class="compact-hero">
     <div class="container">
-        <h1 class="logo">EHITUS<span>TURG</span></h1>
+        <h1 class="logo" onclick="scrollToTop()">EHI<span>KO</span></h1>
     </div>
 </header>
 
@@ -64,7 +64,7 @@
 
 <main class="container listing-area">
     <div id="main-grid"></div>
-    <div id="loader-sentinel" style="text-align:center; padding: 20px; color: #666; font-size: 0.9rem; min-height: 50px;"></div>
+    <div id="loader-sentinel"></div>
 </main>
 
 <div id="postFirmModal" class="modal">
@@ -75,24 +75,23 @@
         </div>
 
         <div id="authStep" class="modal-step">
-    <p data-et="Logi sisse või registreeru" data-ru="Войти или зарегистрироваться">Logi sisse või registreeru:</p>
-    <div class="form-group">
-        <label for="userEmail">Email</label>
-        <input type="email" id="userEmail" placeholder="your@email.com" class="form-input" required>
-    </div>
-    <div class="form-group">
-        <label for="userPassword" data-et="Salasõna (min 6 tähte)" data-ru="Пароль (мин. 6 символов)">Salasõna (min 6 tähte)</label>
-        <input type="password" id="userPassword" placeholder="******" class="form-input" required>
-    </div>
-    <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button onclick="loginUser()" class="submit-btn" style="flex: 1;" data-et="Logi sisse" data-ru="Войти">Logi sisse</button>
-        <button onclick="registerUser()" class="submit-btn" style="flex: 1; background: #34495e;" data-et="Registreeru" data-ru="Регистрация">Registreeru</button>
-    </div>
-    
-    <div style="text-align: center; margin-top: 15px;">
-        <a href="#" onclick="forgotPassword(); return false;" style="color: #666; font-size: 0.85rem; text-decoration: underline;" data-et="Unustasid parooli?" data-ru="Забыли пароль?">Unustasid parooli?</a>
-    </div>
-</div>
+            <p data-et="Logi sisse või registreeru" data-ru="Войти или зарегистрироваться">Logi sisse või registreeru:</p>
+            <div class="form-group">
+                <label for="userEmail">Email</label>
+                <input type="email" id="userEmail" placeholder="your@email.com" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="userPassword" data-et="Salasõna (min 6 tähte)" data-ru="Пароль (мин. 6 символов)">Salasõna (min 6 tähte)</label>
+                <input type="password" id="userPassword" placeholder="******" class="form-input" required>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="loginUser()" class="submit-btn" style="flex: 1;" data-et="Logi sisse" data-ru="Войти">Logi sisse</button>
+                <button onclick="registerUser()" class="submit-btn" style="flex: 1; background: #34495e;" data-et="Registreeru" data-ru="Регистрация">Registreeru</button>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="#" onclick="forgotPassword(); return false;" style="color: #666; font-size: 0.85rem; text-decoration: underline;" data-et="Unustasid parooli?" data-ru="Забыли пароль?">Unustasid parooli?</a>
+            </div>
+        </div>
 
         <div id="userFirmsStep" class="modal-step hidden">
             <div id="userFirmsList" class="user-firms-list"></div>
@@ -104,11 +103,10 @@
                     <label for="firmName" data-et="Firma nimi" data-ru="Название компании">Firma nimi</label>
                     <input type="text" id="firmName" required class="form-input">
                 </div>
-
                 <div class="form-group">
                     <label for="firmCategory" data-et="Kategooria" data-ru="Категория">Kategooria</label>
                     <select id="firmCategory" required class="form-input">
-                       <option value="">Vali kategooria</option>
+                       <option value="" data-et="Vali kategooria" data-ru="Выбрать категорию">Vali kategooria</option>
                        <option value="construction" data-et="Ehitus" data-ru="Строительство">Ehitus</option>
                        <option value="renovation" data-et="Renoveerimine" data-ru="Ремонт">Renoveerimine</option>
                        <option value="electrical" data-et="Elektritööd" data-ru="Электрика">Elektritööd</option>
@@ -125,7 +123,6 @@
                        <option value="demolition" data-et="Lammutus" data-ru="Демонтаж">Lammutus</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label for="firmCity" data-et="Linn" data-ru="Город">Linn</label>
                     <select id="firmCity" required class="form-input">
@@ -138,43 +135,32 @@
                         <option value="muu" data-et="Muu" data-ru="Другое">Muu</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label for="firmPhone" data-et="Telefon" data-ru="Телефон">Telefon</label>
                     <input type="tel" id="firmPhone" placeholder="555 0000" required class="form-input">
                 </div>
-
                 <div class="form-group">
                     <label for="firmWebsite" data-et="Veebisait" data-ru="Веб-сайт">Veebisait</label>
                     <input type="url" id="firmWebsite" placeholder="https://..." class="form-input">
                 </div>
-
                 <div class="form-group">
                     <label for="firmExperience" data-et="Kogemuse aastad" data-ru="Лет опыта">Kogemuse aastad</label>
                     <input type="number" id="firmExperience" min="0" required class="form-input">
                 </div>
-
                 <div class="form-group">
                     <label data-et="Firma logo" data-ru="Логотип">Firma logo</label>
-                    <div class="logo-upload">
-                        <input type="file" id="logoFile" accept="image/*" class="file-input">
-                        <label for="logoFile" class="file-label">
-                            <span data-et="Vali logo" data-ru="Выбрать лого">Vali logo</span>
-                        </label>
-                        <div id="logoPreview" class="logo-preview hidden">
-                            <img id="logoPreviewImg" src="" alt="Preview">
-                            <button type="button" class="remove-logo-btn" onclick="removeLogo()">×</button>
-                        </div>
+                    <input type="file" id="logoFile" accept="image/*" class="form-input">
+                    <div id="logoPreview" class="hidden" style="margin-top:10px; text-align:center;">
+                        <img id="logoPreviewImg" src="" alt="Preview" style="max-height:80px; border-radius:4px;">
                     </div>
                 </div>
-
                 <button type="button" onclick="submitFirm()" class="submit-btn" data-et="Salvesta" data-ru="Сохранить">Salvesta</button>
-                <button type="button" onclick="showUserFirmsStep()" class="back-btn" data-et="Tühista" data-ru="Отмена" style="background:#95a5a6; margin-top:8px;">Tühista</button>
+                <button type="button" onclick="showUserFirmsStep()" class="back-btn" style="background:#95a5a6; margin-top:8px; width:100%; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer;" data-et="Tühista" data-ru="Отмена">Tühista</button>
             </form>
         </div>
 
         <div id="successStep" class="modal-step hidden">
-            <div class="success-message" style="text-align: center; padding: 20px;">
+            <div style="text-align: center; padding: 20px;">
                 <h3 data-et="Tehtud!" data-ru="Готово!">Tehtud!</h3>
                 <p data-et="Andmed on salvestatud." data-ru="Данные сохранены.">Andmed on salvestatud.</p>
                 <button onclick="closePostFirmModal()" class="submit-btn" data-et="Sulge" data-ru="Закрыть">Sulge</button>
@@ -183,49 +169,28 @@
     </div>
 </div>
 
+<div id="premiumModal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-header" style="justify-content: center;">
+            <h2 data-et="Telli Premium ⭐" data-ru="Заказать Premium ⭐" style="color: #d4af37;">Telli Premium ⭐</h2>
+            <button class="close-btn" onclick="closePremiumModal()">×</button>
+        </div>
+        <div style="padding: 20px;">
+            <p data-et="Premium kuulutus on alati eespool." data-ru="Премиум-объявление всегда наверху.">Premium kuulutus on alati eespool.</p>
+            <h3 style="font-size: 1.8rem; margin: 15px 0;">9.99€ / kuu</h3>
+            <a href="mailto:info@ehitusturg.ee" style="text-decoration: none; font-weight: bold; color: #007bff;">info@ehitusturg.ee</a>
+        </div>
+        <button onclick="closePremiumModal()" class="submit-btn" style="background: #95a5a6;" data-et="Sulge" data-ru="Закрыть">Sulge</button>
+    </div>
+</div>
+
 <div id="modalOverlay" class="modal-overlay" onclick="closePostFirmModal()"></div>
+<div id="toast-container"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<div id="toast-container" class="toast-container"></div>
-<div id="premiumModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 400px; text-align: center;">
-        <div class="modal-header" style="justify-content: center; position: relative;">
-            <h2 data-et="Telli Premium ⭐" data-ru="Заказать Premium ⭐" style="color: #d4af37;">Telli Premium ⭐</h2>
-            <button class="close-btn" onclick="closePremiumModal()" style="position: absolute; right: 0;">×</button>
-        </div>
-        
-        <div style="padding: 20px 0;">
-            <p style="font-size: 1.1rem; margin-bottom: 15px;" 
-               data-et="Premium kuulutus on alati eespool ja esile tõstetud kuldse raamiga." 
-               data-ru="Премиум-объявление всегда наверху и выделено золотой рамкой.">
-               Premium kuulutus on alati eespool ja esile tõstetud kuldse raamiga.
-            </p>
-            
-            <h3 style="font-size: 1.8rem; margin-bottom: 20px; color: #333;">9.99€ <span style="font-size: 1rem; color: #666;">/ kuu</span></h3>
-            
-            <p style="margin-bottom: 15px;" 
-               data-et="Tellimiseks saada meile e-kiri oma firma nimega aadressile:" 
-               data-ru="Для заказа отправьте письмо с названием вашей компании на адрес:">
-               Tellimiseks saada meile e-kiri oma firma nimega aadressile:
-            </p>
-            
-            <a href="mailto:info@ehitusturg.ee" style="font-size: 1.2rem; font-weight: bold; color: #007bff; text-decoration: none; display: inline-block; padding: 15px 25px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
-                info@ehitusturg.ee
-            </a>
-            
-            <p style="font-size: 0.9rem; color: #666;" 
-               data-et="Saadame teile e-arve ja aktiveerime Premium staatuse kohe pärast laekumist." 
-               data-ru="Мы отправим вам счет и активируем статус Premium сразу после оплаты.">
-               Saadame teile e-arve ja aktiveerime Premium staatuse kohe pärast laekumist.
-            </p>
-        </div>
-        
-        <button onclick="closePremiumModal()" class="submit-btn" style="background: #95a5a6;" data-et="Sulge" data-ru="Закрыть">Sulge</button>
-    </div>
-</div>
 <script src="script.js"></script>
+
 </body>
 </html>

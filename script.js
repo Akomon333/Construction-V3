@@ -32,6 +32,7 @@ let currentCategory = 'all';
 let currentCity = 'all';
 let currentSearch = '';
 let searchTimer = null;
+let userFirmsRef = null;
 let userFirmsListener = null;
 
 const i18n = {
@@ -56,7 +57,7 @@ const i18n = {
         resetSent: "Parooli lähtestamise link saadeti e-mailile!",
         loginToRate: "Hindamiseks pead sisse logima!",
         ratingSaved: "Hinnang antud!",
-        erifyEmailSent: "Kinnituslink saadetud e-mailile!",
+        verifyEmailSent: "Kinnituslink saadetud e-mailile!",
         pleaseVerify: "Palun kinnita oma e-posti aadress!"
     },
     ru: {
@@ -343,16 +344,72 @@ auth.onAuthStateChanged(user => {
     currentUser = user;
     updateAuthUI();
     if (user) {
-        loadUserFirms();
+        attachUserFirmsListener();
     } else {
+        detachUserFirmsListener();
         const container = document.getElementById('userFirmsList');
         if (container) container.innerHTML = '';
-        if (userFirmsListener) {
-            db.ref().child('firms').off('value', userFirmsListener);
-            userFirmsListener = null;
-        }
     }
 });
+
+function attachUserFirmsListener() {
+    if (!currentUser) return;
+    detachUserFirmsListener();
+
+    userFirmsRef = db.ref(`firms/${currentUser.uid}`);
+    userFirmsListener = userFirmsRef.on('value', snap => {
+        renderUserFirms(snap.val() || {});
+    }, err => {
+        console.error('User firms listener error:', err);
+    });
+}
+
+function detachUserFirmsListener() {
+    if (userFirmsRef && userFirmsListener) {
+        userFirmsRef.off('value', userFirmsListener);
+    }
+    userFirmsRef = null;
+    userFirmsListener = null;
+}
+
+function renderUserFirms(data) {
+    const container = document.getElementById('userFirmsList');
+    if (!container) return;
+
+    container.innerHTML = `
+        <button onclick="resetForm(); showFirmStep()" class="submit-btn">${i18n[currentLanguage].addNew}</button>
+        <button onclick="logout()" class="back-btn" style="margin-top:10px; background:#95a5a6; width:100%; border:none; color:white; padding:10px; border-radius:8px; cursor:pointer;">${i18n[currentLanguage].logout}</button>
+        <div style="margin-top:20px;"></div>`;
+
+    const entries = Object.entries(data);
+
+    if (entries.length === 0) {
+        const empty = document.createElement('p');
+        empty.style = "text-align:center; opacity:0.6; margin-top:20px;";
+        empty.textContent = i18n[currentLanguage].empty;
+        container.appendChild(empty);
+        return;
+    }
+
+    entries.forEach(([id, firm]) => {
+        const item = document.createElement('div');
+        item.className = "user-firm-item";
+        item.style = "padding:15px; border:1px solid #eee; margin-bottom:10px; border-radius:8px; background:#f9f9f9;";
+        item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold;">${escapeHtml(firm.name)}</span>
+                <div>
+                    <button onclick="openEdit('${id}')" style="color:#2ecc71; background:none; border:none; cursor:pointer;">${i18n[currentLanguage].edit}</button>
+                    <button onclick="deleteFirm('${id}')" style="color:#e74c3c; background:none; border:none; cursor:pointer; margin-left:10px;">${i18n[currentLanguage].delete}</button>
+                </div>
+            </div>
+            ${firm.isPremium 
+                ? `<p style="color:#f1c40f; margin-top:5px; font-size:0.8rem;">🌟 Premium Aktiivne</p>` 
+                : `<button onclick="startUpgrade('${id}')" style="width:100%; margin-top:10px; background:#f1c40f; border:none; padding:5px; border-radius:4px; cursor:pointer;">Upgrade to Premium</button>`
+            }`;
+        container.appendChild(item);
+    });
+}
 
 function updateAuthUI() {
     const btn = document.querySelector('.add-firm-btn');
@@ -387,7 +444,6 @@ function registerUser() {
         .then((userCredential) => {
             userCredential.user.sendEmailVerification();
             showToast(i18n[currentLanguage].verifyEmailSent, 'success');
-            
             auth.signOut(); 
             closePostFirmModal();
         })
@@ -399,9 +455,7 @@ function forgotPassword() {
     if (!email) return showToast(i18n[currentLanguage].enterEmail, 'error');
     
     auth.sendPasswordResetEmail(email)
-        .then(() => {
-            showToast(i18n[currentLanguage].resetSent, 'success');
-        })
+        .then(() => showToast(i18n[currentLanguage].resetSent, 'success'))
         .catch(e => showToast(e.message, 'error'));
 }
 
@@ -415,43 +469,11 @@ function logout() {
 
 function loadUserFirms() {
     if (!currentUser) return;
-    
-    if (userFirmsListener) {
-        db.ref(`firms/${currentUser.uid}`).off('value', userFirmsListener);
+    const container = document.getElementById('userFirmsList');
+    if (!container) return;
+    if (!userFirmsListener) {
+        attachUserFirmsListener();
     }
-
-    userFirmsListener = db.ref(`firms/${currentUser.uid}`).on('value', snap => {
-        const container = document.getElementById('userFirmsList');
-        if (!container) return;
-        const data = snap.val() || {};
-        
-        container.innerHTML = `
-            <button onclick="resetForm(); showFirmStep()" class="submit-btn">${i18n[currentLanguage].addNew}</button>
-            <button onclick="logout()" class="back-btn" style="margin-top:10px; background:#95a5a6;">${i18n[currentLanguage].logout}</button>`;
-
-        Object.keys(data).forEach(id => {
-            const firm = data[id];
-            const d = document.createElement('div');
-            d.className = "user-firm-item";
-            d.style = "display:flex; flex-direction:column; padding:15px; border-bottom:1px solid #eee; background:#fff; margin-top:10px; border-radius:8px;";
-
-            const isPremium = firm.isPremium === true;
-            const upgradeBtnHtml = isPremium 
-                ? `<span style="color:#f1c40f; font-weight:bold; text-align:center; margin-top:10px;">🌟 ${i18n[currentLanguage].premiumActive}</span>`
-                : `<button onclick="startUpgrade('${id}')" class="upgrade-btn" style="background:#f1c40f; color:black; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:10px; width:100%;">${i18n[currentLanguage].upgrade}</button>`;
-
-            d.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold; font-size:1.1rem;">${escapeHtml(firm.name || '')}</span>
-                    <div>
-                        <button onclick="openEdit('${id}')" style="color:#2ecc71; border:none; background:none; cursor:pointer; font-weight:bold;">${i18n[currentLanguage].edit}</button>
-                        <button onclick="deleteFirm('${id}')" style="color:#e74c3c; border:none; background:none; cursor:pointer; margin-left:15px; font-weight:bold;">${i18n[currentLanguage].delete}</button>
-                    </div>
-                </div>
-                ${upgradeBtnHtml}`;
-            container.appendChild(d);
-        });
-    });
 }
 
 async function deleteFirm(firmId) {
@@ -496,14 +518,26 @@ function escapeHtml(t) {
 }
 
 function openPostFirmModal() {
-    document.getElementById('postFirmModal').classList.add('active');
-    document.getElementById('modalOverlay').classList.add('active');
-    currentUser ? showUserFirmsStep() : showAuthStep();
+    const modal = document.getElementById('postFirmModal');
+    const overlay = document.getElementById('modalOverlay');
+    
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    
+    if (currentUser) {
+        showUserFirmsStep();
+    } else {
+        showAuthStep();
+    }
 }
 
 function closePostFirmModal() {
-    document.getElementById('postFirmModal').classList.remove('active');
-    document.getElementById('modalOverlay').classList.remove('active');
+    const modal = document.getElementById('postFirmModal');
+    const overlay = document.getElementById('modalOverlay');
+    
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    
     resetForm();
 }
 
@@ -618,4 +652,3 @@ function scrollToTop() {
         behavior: 'smooth' 
     });
 }
-
