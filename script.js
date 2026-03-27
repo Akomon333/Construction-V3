@@ -33,7 +33,7 @@ let editingFirmId = null;
 let lastLoadedKey = null;
 let isLoading = false;
 let hasMore = true;
-
+let currentLang = 'et';
 let currentCategory = 'all';
 let currentCity = 'all';
 let currentSearch = '';
