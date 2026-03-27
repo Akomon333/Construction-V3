@@ -92,18 +92,18 @@ const i18n = {
     }
 };
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
-    if (!container) return;
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.textContent = message;
+    toast.innerText = message;
+
     container.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
+
     setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300); 
-    }, 3500);
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
 }
 
 async function fetchFirms(reset = false) {
