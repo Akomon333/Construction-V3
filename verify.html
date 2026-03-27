@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ehiko | Email Verification</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .lang-toggle { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; }
+        .lang-toggle button { background: none; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.8rem; }
+        .lang-toggle button.active { background: #3498db; color: white; border-color: #3498db; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f7f6; margin:0; font-family: sans-serif;">
+
+    <div class="lang-toggle">
+        <button id="btn-et" onclick="setLang('et')" class="active">EST</button>
+        <button id="btn-ru" onclick="setLang('ru')">РУС</button>
+    </div>
+
+    <div class="modal-content" style="max-width:400px; width:90%; background:white; padding:40px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); text-align:center;">
+        <h2 id="statusTitle">Kontrollimine...</h2>
+        <p id="statusMsg" style="margin: 20px 0; color: #666; line-height: 1.5;">Palun oota hetk, kinnitame sinu e-posti aadressi.</p>
+        
+        <div id="actionArea" class="hidden">
+            <a href="index.html" id="backBtn" class="submit-btn" style="text-decoration:none; display:inline-block; padding:12px 25px; background:#3498db; color:white; border-radius:8px; font-weight:bold;">Tagasi avalehele</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBH-gxdcZNj25rgCds4l-TtNuBDhTBy9Yo",
+            authDomain: "ehiko-86b2e.firebaseapp.com",
+            projectId: "ehiko-86b2e"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const i18n = {
+            et: {
+                loadingTitle: "Kontrollimine...",
+                loadingMsg: "Palun oota hetk, kinnitame sinu e-posti aadressi.",
+                successTitle: "Kinnitatud!",
+                successMsg: "Sinu e-post on edukalt kinnitatud. Võid nüüd sisse logida.",
+                errorTitle: "Oih!",
+                errorMsg: "See link on aegunud või juba kasutatud. Palun telli uus kinnitusmeil.",
+                noCodeTitle: "Viga!",
+                noCodeMsg: "Kinnitusseanss puudub või on vigane.",
+                back: "Tagasi avalehele"
+            },
+            ru: {
+                loadingTitle: "Проверка...",
+                loadingMsg: "Пожалуйста, подождите, мы подтверждаем ваш адрес электронной почты.",
+                successTitle: "Подтверждено!",
+                successMsg: "Ваш адрес электронной почты успешно подтвержден. Теперь вы можете войти в систему.",
+                errorTitle: "Ой!",
+                errorMsg: "Эта ссылка истекла или уже была использована. Пожалуйста, запросите новое письмо с подтверждением.",
+                noCodeTitle: "Ошибка!",
+                noCodeMsg: "Сеанс подтверждения отсутствует или недействителен.",
+                back: "На главную"
+            }
+        };
+
+        let currentLang = 'et';
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionCode = urlParams.get('oobCode');
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.getElementById('btn-et').className = (lang === 'et' ? 'active' : '');
+            document.getElementById('btn-ru').className = (lang === 'ru' ? 'active' : '');
+            document.getElementById('backBtn').innerText = i18n[lang].back;
+            
+            // Re-run status check if already processed to update text
+            updateUIStatus();
+        }
+
+        let verificationStatus = 'loading'; // loading, success, error, nocode
+
+        function updateUIStatus() {
+            const title = document.getElementById('statusTitle');
+            const msg = document.getElementById('statusMsg');
+            const action = document.getElementById('actionArea');
+
+            if (verificationStatus === 'loading') {
+                title.innerText = i18n[currentLang].loadingTitle;
+                msg.innerText = i18n[currentLang].loadingMsg;
+            } else if (verificationStatus === 'success') {
+                title.innerText = i18n[currentLang].successTitle;
+                title.style.color = "#2ecc71";
+                msg.innerText = i18n[currentLang].successMsg;
+                action.classList.remove('hidden');
+            } else if (verificationStatus === 'error') {
+                title.innerText = i18n[currentLang].errorTitle;
+                title.style.color = "#e74c3c";
+                msg.innerText = i18n[currentLang].errorMsg;
+                action.classList.remove('hidden');
+            } else if (verificationStatus === 'nocode') {
+                title.innerText = i18n[currentLang].noCodeTitle;
+                msg.innerText = i18n[currentLang].noCodeMsg;
+                action.classList.remove('hidden');
+            }
+        }
+
+        async function processVerification() {
+            if (!actionCode) {
+                verificationStatus = 'nocode';
+                updateUIStatus();
+                return;
+            }
+
+            try {
+                await firebase.auth().applyActionCode(actionCode);
+                verificationStatus = 'success';
+            } catch (error) {
+                verificationStatus = 'error';
+            }
+            updateUIStatus();
+        }
+
+        // Start the process
+        processVerification();
+    </script>
+</body>
+</html>

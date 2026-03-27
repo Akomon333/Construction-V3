@@ -3,23 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EhitusTurg | Uue parooli määramine</title>
+    <title>Ehiko | Password Reset</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .lang-toggle { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; }
+        .lang-toggle button { background: none; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.8rem; }
+        .lang-toggle button.active { background: #3498db; color: white; border-color: #3498db; }
+        .hidden { display: none !important; }
+    </style>
 </head>
-<body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f7f6;">
+<body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f7f6; margin:0; font-family: sans-serif;">
 
-    <div class="modal-content" style="max-width:400px; width:90%; position:static;">
+    <div class="lang-toggle">
+        <button id="btn-et" onclick="setLang('et')" class="active">EST</button>
+        <button id="btn-ru" onclick="setLang('ru')">РУС</button>
+    </div>
+
+    <div class="modal-content" style="max-width:400px; width:90%; position:relative; background:white; padding:30px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
         <h2 id="resetTitle">Uus parool</h2>
         <p id="resetMsg" style="font-size:0.9rem; color:#666; margin-bottom:20px;">Sisesta oma uus salasõna.</p>
         
         <div id="resetForm">
-            <input type="password" id="newPassword" placeholder="Uus parool (min 6 märki)" class="form-input" style="margin-bottom:15px;">
-            <button onclick="handlePasswordReset()" class="submit-btn" id="resetBtn">Salvesta uus parool</button>
+            <input type="password" id="newPassword" placeholder="Uus parool (min 6 märki)" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; box-sizing:border-box; border:1px solid #ddd; border-radius:8px;">
+            <button onclick="handlePasswordReset()" class="submit-btn" id="resetBtn" style="width:100%; padding:12px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Salvesta uus parool</button>
         </div>
         
         <div id="successArea" class="hidden" style="text-align:center;">
-            <p style="color:#2ecc71; font-weight:bold;">Parool on muudetud!</p>
-            <a href="index.html" class="submit-btn" style="display:block; text-decoration:none; margin-top:15px;">Tagasi avalehele</a>
+            <p id="successTxt" style="color:#2ecc71; font-weight:bold;">Parool on muudetud!</p>
+            <a href="index.html" id="backBtn" class="submit-btn" style="display:block; text-decoration:none; margin-top:15px; padding:12px; background:#2ecc71; color:white; border-radius:8px;">Tagasi avalehele</a>
         </div>
     </div>
 
@@ -30,15 +41,56 @@
         const firebaseConfig = {
             apiKey: "AIzaSyBH-gxdcZNj25rgCds4l-TtNuBDhTBy9Yo",
             authDomain: "ehiko-86b2e.firebaseapp.com",
-            databaseURL: "https://ehiko-86b2e-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "ehiko-86b2e",
-            storageBucket: "ehiko-86b2e.firebasestorage.app",
-            messagingSenderId: "402563759174",
-            appId: "1:402563759174:web:1cbbcf40f93156dd731e47"
-};
+            projectId: "ehiko-86b2e"
+        };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
+        // --- Translations ---
+        const i18n = {
+            et: {
+                title: "Uus parool",
+                msg: "Sisesta oma uus salasõna.",
+                placeholder: "Uus parool (min 6 märki)",
+                btn: "Salvesta uus parool",
+                saving: "Salvestamine...",
+                success: "Parool on muudetud!",
+                back: "Tagasi avalehele",
+                shortPass: "Liiga lühike parool!",
+                error: "Link on aegunud või vigane. Palun telli uus parooli lähtestamine."
+            },
+            ru: {
+                title: "Новый пароль",
+                msg: "Введите ваш новый пароль.",
+                placeholder: "Новый пароль (мин. 6 символов)",
+                btn: "Сохранить новый пароль",
+                saving: "Сохранение...",
+                success: "Пароль изменен!",
+                back: "На главную",
+                shortPass: "Пароль слишком короткий!",
+                error: "Ссылка истекла или недействительна. Пожалуйста, запросите новый сброс пароля."
+            }
+        };
+
+        let currentLang = 'et';
+
+        function setLang(lang) {
+            currentLang = lang;
+            
+            // Update UI text
+            document.getElementById('resetTitle').innerText = i18n[lang].title;
+            document.getElementById('resetMsg').innerText = i18n[lang].msg;
+            document.getElementById('newPassword').placeholder = i18n[lang].placeholder;
+            document.getElementById('resetBtn').innerText = i18n[lang].btn;
+            document.getElementById('successTxt').innerText = i18n[lang].success;
+            document.getElementById('backBtn').innerText = i18n[lang].back;
+
+            // Update buttons
+            document.getElementById('btn-et').className = (lang === 'et' ? 'active' : '');
+            document.getElementById('btn-ru').className = (lang === 'ru' ? 'active' : '');
+        }
+
+        // --- Reset Logic ---
         const urlParams = new URLSearchParams(window.location.search);
         const actionCode = urlParams.get('oobCode');
 
@@ -46,22 +98,24 @@
             const newPassword = document.getElementById('newPassword').value;
             const btn = document.getElementById('resetBtn');
 
-            if (newPassword.length < 6) return alert("Liiga lühike parool!");
+            if (newPassword.length < 6) {
+                alert(i18n[currentLang].shortPass);
+                return;
+            }
             
             btn.disabled = true;
-            btn.textContent = "Salvestamine...";
+            btn.textContent = i18n[currentLang].saving;
 
             try {
-                // 2. Verify and apply the new password
                 await auth.confirmPasswordReset(actionCode, newPassword);
                 
                 document.getElementById('resetForm').classList.add('hidden');
                 document.getElementById('resetMsg').classList.add('hidden');
                 document.getElementById('successArea').classList.remove('hidden');
             } catch (error) {
-                alert("Link on aegunud või vigane. Palun telli uus parooli lähtestamine.");
+                alert(i18n[currentLang].error);
                 btn.disabled = false;
-                btn.textContent = "Salvesta uus parool";
+                btn.textContent = i18n[currentLang].btn;
             }
         }
     </script>

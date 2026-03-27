@@ -454,12 +454,21 @@ function registerUser() {
 }
 
 function forgotPassword() {
-    const email = document.getElementById('userEmail').value.trim();
-    if (!email) return showToast(i18n[currentLanguage].enterEmail, 'error');
-    
-    auth.sendPasswordResetEmail(email)
-        .then(() => showToast(i18n[currentLanguage].resetSent, 'success'))
-        .catch(e => showToast(e.message, 'error'));
+    const email = document.getElementById('userEmail').value;
+    if (!email) {
+        showToast(currentLang === 'et' ? "Palun sisesta email!" : "Пожалуйста, введите email!", "error");
+        return;
+    }
+
+    firebase.auth().sendPasswordResetEmail(email)
+        .then(() => {
+            showToast(currentLang === 'et' 
+                ? "Parooli lähtestamise link saadetud!" 
+                : "Ссылка для сброса пароля отправлена!", "success");
+        })
+        .catch((error) => {
+            showToast(error.message, "error");
+        });
 }
 
 function logout() {
@@ -500,6 +509,7 @@ async function uploadToCloudinary(file) {
 }
 
 function setLang(lang) {
+    firebase.auth().languageCode = lang;
     currentLanguage = lang;
     localStorage.setItem('selectedLanguage', lang);
     document.querySelectorAll('[data-et]').forEach(el => {
