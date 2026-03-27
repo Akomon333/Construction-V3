@@ -40,7 +40,17 @@ let currentSearch = '';
 let searchTimer = null;
 let userFirmsRef = null;
 let userFirmsListener = null;
+const urlParams = new URLSearchParams(window.location.search);
+const mode = urlParams.get('mode');
+const actionCode = urlParams.get('oobCode');
 
+if (mode && actionCode) {
+    if (mode === 'resetPassword') {
+        window.location.href = `reset.html?oobCode=${actionCode}`;
+    } else if (mode === 'verifyEmail') {
+        window.location.href = `verify.html?oobCode=${actionCode}`;
+    }
+}
 const i18n = {
     et: {
         profile: "Minu profiil", postFirm: "+ Postita", addNew: "+ Lisa uus firma", logout: "Logi välja",
