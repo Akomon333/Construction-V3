@@ -1,16 +1,16 @@
-const CLOUDINARY_CLOUD_NAME = "dagx8psvi";
+const CLOUDINARY_CLOUD_NAME = "ddplimxar";
 const CLOUDINARY_PRESET = "ehitusturg_logos"; 
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 const USE_CLOUDINARY = CLOUDINARY_CLOUD_NAME && CLOUDINARY_PRESET;
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBWbVRiYKugqy8axQ_MOW0P8fM8z4iE7XY",
-    authDomain: "ehitusturg-64173.firebaseapp.com",
-    databaseURL: "https://ehitusturg-64173-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "ehitusturg-64173",
-    storageBucket: "ehitusturg-64173.firebasestorage.app",
-    messagingSenderId: "466211818119",
-    appId: "1:466211818119:web:fa65719a98bcc5dacbc622"
+  apiKey: "AIzaSyBH-gxdcZNj25rgCds4l-TtNuBDhTBy9Yo",
+  authDomain: "ehiko-86b2e.firebaseapp.com",
+  databaseURL: "https://ehiko-86b2e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ehiko-86b2e",
+  storageBucket: "ehiko-86b2e.firebasestorage.app",
+  messagingSenderId: "402563759174",
+  appId: "1:402563759174:web:1cbbcf40f93156dd731e47"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -403,10 +403,7 @@ function renderUserFirms(data) {
                     <button onclick="deleteFirm('${id}')" style="color:#e74c3c; background:none; border:none; cursor:pointer; margin-left:10px;">${i18n[currentLanguage].delete}</button>
                 </div>
             </div>
-            ${firm.isPremium 
-                ? `<p style="color:#f1c40f; margin-top:5px; font-size:0.8rem;">🌟 Premium Aktiivne</p>` 
-                : `<button onclick="startUpgrade('${id}')" style="width:100%; margin-top:10px; background:#f1c40f; border:none; padding:5px; border-radius:4px; cursor:pointer;">Upgrade to Premium</button>`
-            }`;
+            `;
         container.appendChild(item);
     });
 }
