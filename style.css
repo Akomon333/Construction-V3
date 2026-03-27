@@ -327,60 +327,56 @@ body {
     .visit-btn { width: 100%; }
 }
 
+/* 1. Position the container at the top */
 #toast-container {
     position: fixed;
-    top: 20px;
-    right: 20px; 
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px; 
-    pointer-events: none; 
-}
-
-#toast-container > div {
-    pointer-events: auto; 
-}
-
-@media (max-width: 600px) {
-    #toast-container {
-        right: 50%;
-        transform: translateX(50%);
-        width: 90%; /* Prevents it from touching the absolute edges */
-        align-items: center;
-    }
-}
-
-.toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
+    top: 20px;          /* Distance from top */
+    right: 20px;        /* Distance from right */
+    width: auto;
+    max-width: 350px;   /* Prevents it from being too wide */
+    z-index: 99999;     /* Higher than modals (usually 1000-2000) */
     display: flex;
     flex-direction: column;
     gap: 10px;
+    pointer-events: none; /* Allows clicking things 'through' the empty container */
 }
 
+/* 2. Individual Toast Styling (assuming you create a div inside) */
 .toast {
+    pointer-events: auto; /* Re-enable clicks for the actual notification */
     background: #333;
-    color: #fff;
+    color: white;
     padding: 12px 20px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-size: 0.95rem;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    min-width: 250px;
+    font-size: 0.9rem;
+    animation: slideInDown 0.3s ease-out; /* Smooth entrance */
 }
 
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
+.toast.success { border-left: 4px solid #2ecc71; }
+.toast.error   { border-left: 4px solid #e74c3c; }
+
+/* 3. Mobile responsiveness */
+@media (max-width: 600px) {
+    #toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;    /* Center on mobile */
+        max-width: none;
+    }
 }
 
-.toast.error { background: #e74c3c; }    
-.toast.success { background: #2ecc71; } 
+/* 4. Smooth Animation */
+@keyframes slideInDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 
 .cookie-banner {
     position: fixed;
