@@ -19,6 +19,10 @@
 
 * { box-sizing: border-box; }
 
+.grecaptcha-badge { 
+    visibility: hidden; 
+}
+
 body {
     margin: 0;
     font-family: 'Inter', -apple-system, sans-serif;

@@ -14,6 +14,12 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
+const appCheck = firebase.appCheck();
+appCheck.activate(
+  '6LfOkZosAAAAAPoVrl4cB7W-mV7gZ8h6f6bi2WA2', 
+);
+
 const db = firebase.database();
 const auth = firebase.auth();
 
