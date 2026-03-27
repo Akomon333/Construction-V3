@@ -40,17 +40,6 @@ let currentSearch = '';
 let searchTimer = null;
 let userFirmsRef = null;
 let userFirmsListener = null;
-const urlParams = new URLSearchParams(window.location.search);
-const mode = urlParams.get('mode');
-const actionCode = urlParams.get('oobCode');
-
-if (mode && actionCode) {
-    if (mode === 'resetPassword') {
-        window.location.href = `reset.html?oobCode=${actionCode}`;
-    } else if (mode === 'verifyEmail') {
-        window.location.href = `verify.html?oobCode=${actionCode}`;
-    }
-}
 const i18n = {
     et: {
         profile: "Minu profiil", postFirm: "+ Postita", addNew: "+ Lisa uus firma", logout: "Logi välja",
@@ -101,6 +90,17 @@ const i18n = {
         pleaseVerify: "Пожалуйста, подтвердите email!"
     }
 };
+const urlParams = new URLSearchParams(window.location.search);
+const mode = urlParams.get('mode');
+const actionCode = urlParams.get('oobCode');
+
+if (mode && actionCode) {
+    if (mode === 'resetPassword') {
+        window.location.href = `reset.html?oobCode=${actionCode}`;
+    } else if (mode === 'verifyEmail') {
+        window.location.href = `verify.html?oobCode=${actionCode}`;
+    }
+}
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -466,13 +466,13 @@ function registerUser() {
 function forgotPassword() {
     const email = document.getElementById('userEmail').value;
     if (!email) {
-        showToast(currentLang === 'et' ? "Palun sisesta email!" : "Пожалуйста, введите email!", "error");
+        showToast(currentLanguage === 'et' ? "Palun sisesta email!" : "Пожалуйста, введите email!", "error");
         return;
     }
 
     firebase.auth().sendPasswordResetEmail(email)
         .then(() => {
-            showToast(currentLang === 'et' 
+            showToast(currentLanguage === 'et' 
                 ? "Parooli lähtestamise link saadetud!" 
                 : "Ссылка для сброса пароля отправлена!", "success");
         })
