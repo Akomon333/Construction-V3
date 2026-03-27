@@ -23,20 +23,22 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
     <script>
-        // Use your SAME config from script.js here
         const firebaseConfig = {
-            apiKey: "AIzaSyBWbVRiYKugqy8axQ_MOW0P8fM8z4iE7XY",
-            authDomain: "ehitusturg-64173.firebaseapp.com",
-            projectId: "ehitusturg-64173",
-        };
+            apiKey: "AIzaSyBH-gxdcZNj25rgCds4l-TtNuBDhTBy9Yo",
+            authDomain: "ehiko-86b2e.firebaseapp.com",
+            databaseURL: "https://ehiko-86b2e-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "ehiko-86b2e",
+            storageBucket: "ehiko-86b2e.firebasestorage.app",
+            messagingSenderId: "402563759174",
+            appId: "1:402563759174:web:1cbbcf40f93156dd731e47"
+};
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
-        // 1. Get the "oobCode" from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const actionCode = urlParams.get('oobCode');
 
